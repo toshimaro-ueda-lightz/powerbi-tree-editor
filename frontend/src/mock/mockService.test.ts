@@ -87,6 +87,15 @@ describe('addChildNode: rejects when parent leaf already has progress recorded',
     if (!result.ok) expect(result.reason).toContain('重み');
   });
 
+  it('allows adding a child once the leaf progress is set back to 0 (spec: block only when > 0)', () => {
+    // a-n4-1 starts at 0.8 -> blocked
+    expect(mockService.addChildNode('dept-a', 'a-n4-1', { name: 'x', weight: 1.0 }).ok).toBe(false);
+    // reset to 0% -> now allowed
+    mockService.updateProgress('dept-a', 'a-n4-1', 0);
+    const result = mockService.addChildNode('dept-a', 'a-n4-1', { name: 'x', weight: 1.0 });
+    expect(result.ok).toBe(true);
+  });
+
   it('allows adding a level-6 child under a level-5 leaf with no progress yet', () => {
     // Give a-n5-1 no direct progress in a fresh fixture variant.
     const store = fixture();

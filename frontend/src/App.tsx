@@ -82,9 +82,9 @@ function App() {
   function handleRequestAddChild(parentNodeId: string) {
     const parent = tree.nodesById[parentNodeId];
     if (!parent) return;
-    if (parent.isLeaf && parent.hasDirectProgressInput) {
+    if (parent.isLeaf && parent.outcomeProgress > 0) {
       setCanvasBanner(
-        'この施策には既に成果進捗が入力済みのため、子施策を追加できません。先に進捗入力の見直しが必要です（確認なしで操作を拒否しています）。',
+        '成果進捗が入力済み（0%超）のため子施策を追加できません。成果進捗を0%にして保存してから追加してください（確認なしで操作を拒否しています）。',
       );
       return;
     }

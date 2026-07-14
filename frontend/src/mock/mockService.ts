@@ -184,9 +184,12 @@ export function addChildNode(departmentId: string, parentNodeId: string, input: 
   const deptEdges = activeEdges(store.edges).filter((e) => e.department_id === departmentId);
   const parentIsLeafNow = isLeafNode(parent, deptEdges);
   if (parentIsLeafNow) {
-    const hasProgress = store.progressInputs.some((p) => p.node_id === parentNodeId);
-    if (hasProgress) {
-      return { ok: false, reason: 'この施策には既に成果進捗が入力済みのため、子施策を追加できません。先に進捗入力を取り消すか、別の施策として管理してください。' };
+    // 仕様: 成果進捗が「0より大きい」末端にのみ追加を禁止。0%に戻せば追加可能。
+    const latest = store.progressInputs
+      .filter((p) => p.node_id === parentNodeId)
+      .sort((a, b) => (a.as_of_date < b.as_of_date ? 1 : -1))[0];
+    if (latest && latest.outcome_progress > 0) {
+      return { ok: false, reason: '成果進捗が入力済み（0%超）のため子施策を追加できません。成果進捗を0%にして保存してから追加してください。' };
     }
   }
 
