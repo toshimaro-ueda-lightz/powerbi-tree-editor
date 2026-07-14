@@ -39,23 +39,23 @@ describe("progress_input", () => {
 		fs.rmSync(tmpDb, { force: true })
 	})
 
-	it("作業進捗・成果進捗を正常に挿入できる", () => {
+	it("成果進捗を正常に挿入できる", () => {
 		const tmpDb = newTmpDb()
 		const db = migrate(tmpDb)
 		const nodeId = seedLeafNode(db)
 
 		const info = db
 			.prepare(
-				"INSERT INTO progress_input (node_id, as_of_date, work_progress, outcome_progress) VALUES (?, ?, ?, ?)",
+				"INSERT INTO progress_input (node_id, as_of_date, outcome_progress) VALUES (?, ?, ?)",
 			)
-			.run(nodeId, "2026-06-19", 0.6, 0.2)
+			.run(nodeId, "2026-06-19", 0.6)
 		expect(info.changes).toBe(1)
 
 		db.close()
 		fs.rmSync(tmpDb, { force: true })
 	})
 
-	it("progress が範囲外(1.5) だと CHECK 制約で拒否される", () => {
+	it("outcome_progress が範囲外(1.5) だと CHECK 制約で拒否される", () => {
 		const tmpDb = newTmpDb()
 		const db = migrate(tmpDb)
 		const nodeId = seedLeafNode(db)
@@ -63,9 +63,9 @@ describe("progress_input", () => {
 		expect(() =>
 			db
 				.prepare(
-					"INSERT INTO progress_input (node_id, as_of_date, work_progress, outcome_progress) VALUES (?, ?, ?, ?)",
+					"INSERT INTO progress_input (node_id, as_of_date, outcome_progress) VALUES (?, ?, ?)",
 				)
-				.run(nodeId, "2026-06-19", 1.5, 0),
+				.run(nodeId, "2026-06-19", 1.5),
 		).toThrow()
 
 		db.close()
@@ -79,9 +79,9 @@ describe("progress_input", () => {
 		expect(() =>
 			db
 				.prepare(
-					"INSERT INTO progress_input (node_id, as_of_date, work_progress, outcome_progress) VALUES (?, ?, ?, ?)",
+					"INSERT INTO progress_input (node_id, as_of_date, outcome_progress) VALUES (?, ?, ?)",
 				)
-				.run(999999, "2026-06-19", 0.5, 0.5),
+				.run(999999, "2026-06-19", 0.5),
 		).toThrow()
 
 		db.close()
@@ -94,10 +94,10 @@ describe("progress_input", () => {
 		const nodeId = seedLeafNode(db)
 
 		const insert = db.prepare(
-			"INSERT INTO progress_input (node_id, as_of_date, work_progress, outcome_progress) VALUES (?, ?, ?, ?)",
+			"INSERT INTO progress_input (node_id, as_of_date, outcome_progress) VALUES (?, ?, ?)",
 		)
-		insert.run(nodeId, "2026-06-19", 0.3, 0.1)
-		expect(() => insert.run(nodeId, "2026-06-19", 0.4, 0.2)).toThrow()
+		insert.run(nodeId, "2026-06-19", 0.3)
+		expect(() => insert.run(nodeId, "2026-06-19", 0.4)).toThrow()
 
 		db.close()
 		fs.rmSync(tmpDb, { force: true })
