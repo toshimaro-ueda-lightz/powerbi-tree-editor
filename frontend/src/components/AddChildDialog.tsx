@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AddChildResult, TreeNodeView } from '../mock/types';
+import { STRINGS } from '../strings';
 import { Modal } from './Modal';
 
 interface AddChildDialogProps {
@@ -19,23 +20,23 @@ export function AddChildDialog({ parentView, suggestedWeightPct, onSubmit, onClo
   const childLevel = parentView.level + 1;
 
   return (
-    <Modal title={`子施策を追加: ${parentView.name}`} onClose={onClose} width={440}>
-      <p className="modal__description">第{childLevel}階層の施策として、「{parentView.name}」の子に追加します。</p>
+    <Modal title={STRINGS.addChildDialog.title(parentView.name)} onClose={onClose} width={440}>
+      <p className="modal__description">{STRINGS.addChildDialog.description(childLevel, parentView.name)}</p>
 
       <div className="edit-panel__field">
-        <label htmlFor="new-child-name">施策名（必須）</label>
+        <label htmlFor="new-child-name">{STRINGS.addChildDialog.nameRequired}</label>
         <input id="new-child-name" type="text" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </div>
       <div className="edit-panel__field">
-        <label htmlFor="new-child-subtitle">サブタイトル</label>
+        <label htmlFor="new-child-subtitle">{STRINGS.addChildDialog.subtitle}</label>
         <input id="new-child-subtitle" type="text" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
       </div>
       <div className="edit-panel__field">
-        <label htmlFor="new-child-assignee">担当者</label>
+        <label htmlFor="new-child-assignee">{STRINGS.addChildDialog.assignee}</label>
         <input id="new-child-assignee" type="text" value={assignee} onChange={(e) => setAssignee(e.target.value)} />
       </div>
       <div className="edit-panel__field">
-        <label htmlFor="new-child-weight">親からの重み (%)</label>
+        <label htmlFor="new-child-weight">{STRINGS.addChildDialog.weightLabel}</label>
         <input
           id="new-child-weight"
           type="number"
@@ -45,14 +46,14 @@ export function AddChildDialog({ parentView, suggestedWeightPct, onSubmit, onClo
           value={weightPct}
           onChange={(e) => setWeightPct(e.target.value)}
         />
-        <p className="sidebar__hint">兄弟施策との合計が100%になるように入力してください。</p>
+        <p className="sidebar__hint">{STRINGS.addChildDialog.weightHint}</p>
       </div>
 
       {error && <div className="banner banner--error">{error}</div>}
 
       <div className="modal__actions">
         <button type="button" className="button button--ghost" onClick={onClose}>
-          キャンセル
+          {STRINGS.common.cancel}
         </button>
         <button
           type="button"
@@ -73,7 +74,7 @@ export function AddChildDialog({ parentView, suggestedWeightPct, onSubmit, onClo
             }
           }}
         >
-          追加
+          {STRINGS.addChildDialog.add}
         </button>
       </div>
     </Modal>

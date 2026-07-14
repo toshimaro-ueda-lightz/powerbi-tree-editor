@@ -12,6 +12,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { TreeSnapshot } from '../mock/types';
+import { STRINGS } from '../strings';
 import { TreeNodeCard } from './TreeNodeCard';
 import { computeLayout, toFlowElements } from './layout';
 import type { TreeNodeCardData } from './types';
@@ -194,7 +195,7 @@ function TreeCanvasInner({
   if (Object.keys(tree.nodesById).length === 0) {
     return (
       <div className="tree-canvas-empty">
-        <p>表示できる施策がありません。部署または年度を確認してください。</p>
+        <p>{STRINGS.treeCanvas.empty}</p>
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Scale3d, Unlink } from 'lucide-react';
 import type { TreeNodeView } from '../mock/types';
+import { STRINGS } from '../strings';
 
 interface EditPanelProps {
   selected: TreeNodeView | null;
@@ -14,14 +15,7 @@ interface EditPanelProps {
   errorMessage: string | null;
 }
 
-const LEVEL_TEXT: Record<number, string> = {
-  1: '第1階層',
-  2: '第2階層',
-  3: '第3階層',
-  4: '第4階層',
-  5: '第5階層',
-  6: '第6階層',
-};
+const LEVEL_TEXT = STRINGS.editPanel.levelText;
 
 export function EditPanel({
   selected,
@@ -50,7 +44,7 @@ export function EditPanel({
   if (!selected) {
     return (
       <aside className="edit-panel edit-panel--empty">
-        <p>ツリー上の施策を選択すると、ここに詳細が表示されます。</p>
+        <p>{STRINGS.editPanel.emptyHint}</p>
       </aside>
     );
   }
@@ -61,23 +55,23 @@ export function EditPanel({
 
   return (
     <aside className="edit-panel">
-      <h2 className="edit-panel__title">施策詳細</h2>
+      <h2 className="edit-panel__title">{STRINGS.editPanel.title}</h2>
 
       {errorMessage && <div className="banner banner--error">{errorMessage}</div>}
 
       <dl className="edit-panel__meta">
-        <dt>ノードコード</dt>
+        <dt>{STRINGS.editPanel.nodeCode}</dt>
         <dd>{selected.node_id}</dd>
-        <dt>階層</dt>
+        <dt>{STRINGS.editPanel.level}</dt>
         <dd>{LEVEL_TEXT[selected.level]}</dd>
-        <dt>区分</dt>
-        <dd>{selected.scope === 'common' ? '共通施策' : '部署固有施策'}</dd>
-        <dt>親施策</dt>
-        <dd>{parentView ? parentView.name : 'なし（第1階層）'}</dd>
+        <dt>{STRINGS.editPanel.scope}</dt>
+        <dd>{selected.scope === 'common' ? STRINGS.editPanel.scopeCommon : STRINGS.editPanel.scopeDept}</dd>
+        <dt>{STRINGS.editPanel.parent}</dt>
+        <dd>{parentView ? parentView.name : STRINGS.common.noneFirstLevel}</dd>
       </dl>
 
       <div className="edit-panel__field">
-        <label htmlFor="field-name">施策名</label>
+        <label htmlFor="field-name">{STRINGS.editPanel.name}</label>
         <input
           id="field-name"
           type="text"
@@ -88,7 +82,7 @@ export function EditPanel({
       </div>
 
       <div className="edit-panel__field">
-        <label htmlFor="field-subtitle">サブタイトル</label>
+        <label htmlFor="field-subtitle">{STRINGS.editPanel.subtitle}</label>
         <input
           id="field-subtitle"
           type="text"
@@ -99,7 +93,7 @@ export function EditPanel({
       </div>
 
       <div className="edit-panel__field">
-        <label htmlFor="field-assignee">担当者</label>
+        <label htmlFor="field-assignee">{STRINGS.editPanel.assignee}</label>
         <input
           id="field-assignee"
           type="text"
@@ -122,29 +116,29 @@ export function EditPanel({
             })
           }
         >
-          基本情報を保存
+          {STRINGS.editPanel.saveBasic}
         </button>
       ) : (
-        <p className="edit-panel__readonly-note">第1〜3階層は共通施策のため、施策名・担当者は編集できません（重みのみ部署別に編集可能）。</p>
+        <p className="edit-panel__readonly-note">{STRINGS.editPanel.readonlyCommonNote}</p>
       )}
 
       <div className="edit-panel__field">
-        <label>親からの重み</label>
+        <label>{STRINGS.editPanel.weightFromParent}</label>
         <div className="edit-panel__weight-row">
           <span className="edit-panel__weight-value">
-            {selected.weightFromParent !== null ? `${(selected.weightFromParent * 100).toFixed(1)}%` : 'なし（第1階層）'}
+            {selected.weightFromParent !== null ? `${(selected.weightFromParent * 100).toFixed(1)}%` : STRINGS.common.noneFirstLevel}
           </span>
           {selected.parentNodeId && (
             <button type="button" className="button button--secondary button--small" onClick={() => onOpenWeightEditor(selected.parentNodeId!)}>
               <Scale3d size={13} />
-              兄弟の重みを一括編集
+              {STRINGS.editPanel.openWeightEditor}
             </button>
           )}
         </div>
       </div>
 
       <div className="edit-panel__field">
-        <label htmlFor="field-progress">成果進捗</label>
+        <label htmlFor="field-progress">{STRINGS.editPanel.outcomeProgress}</label>
         {selected.isLeaf ? (
           <div className="edit-panel__progress-editor">
             <input
@@ -171,34 +165,34 @@ export function EditPanel({
           </div>
         ) : (
           <div className="edit-panel__computed-value">
-            {Math.round(selected.outcomeProgress * 100)}% <span className="tag tag--muted">計算値（子の重み付き合計）</span>
+            {Math.round(selected.outcomeProgress * 100)}% <span className="tag tag--muted">{STRINGS.editPanel.computedTag}</span>
           </div>
         )}
       </div>
 
       {selected.level === 1 && (
         <div className="edit-panel__field">
-          <label htmlFor="field-area">可能面積（{fiscalYear}年度）</label>
+          <label htmlFor="field-area">{STRINGS.editPanel.areaLabel(fiscalYear)}</label>
           <input
             id="field-area"
             type="number"
             min={0}
             value={draftArea}
-            placeholder="未設定"
+            placeholder={STRINGS.editPanel.areaPlaceholder}
             onChange={(e) => setDraftArea(e.target.value)}
             onBlur={() => {
               const v = Number(draftArea);
               if (draftArea.trim() !== '' && !Number.isNaN(v)) onUpdateArea(v);
             }}
           />
-          {selected.area === null && <p className="edit-panel__readonly-note">{fiscalYear}年度の可能面積データがありません。</p>}
+          {selected.area === null && <p className="edit-panel__readonly-note">{STRINGS.editPanel.areaMissing(fiscalYear)}</p>}
         </div>
       )}
 
       {selected.isLeaf && (
         <button type="button" className="button button--danger edit-panel__detach-btn" onClick={() => onDetach(selected.node_id)}>
           <Unlink size={14} />
-          ツリーから外す（linkage解除）
+          {STRINGS.editPanel.detach}
         </button>
       )}
     </aside>

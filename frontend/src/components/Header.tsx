@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, RotateCcw, Save } from 'lucide-react';
 import type { DepartmentRecord } from '../domain/types';
+import { STRINGS } from '../strings';
 
 interface HeaderProps {
   departments: DepartmentRecord[];
@@ -24,10 +25,10 @@ export function Header({
 }: HeaderProps) {
   return (
     <header className="app-header">
-      <div className="app-header__brand">変革ツリー更新アプリ</div>
+      <div className="app-header__brand">{STRINGS.header.brand}</div>
 
       <div className="app-header__field">
-        <label htmlFor="department-select">部署</label>
+        <label htmlFor="department-select">{STRINGS.header.departmentLabel}</label>
         <select
           id="department-select"
           value={selectedDepartmentId}
@@ -42,12 +43,12 @@ export function Header({
       </div>
 
       <div className="app-header__field app-header__fiscal-year">
-        <label>年度</label>
-        <button type="button" className="icon-button" aria-label="前年度" onClick={() => onChangeFiscalYear(fiscalYear - 1)}>
+        <label>{STRINGS.header.fiscalYearLabel}</label>
+        <button type="button" className="icon-button" aria-label={STRINGS.header.prevYear} onClick={() => onChangeFiscalYear(fiscalYear - 1)}>
           <ChevronLeft size={16} />
         </button>
-        <span className="app-header__fiscal-year-value">{fiscalYear}年度</span>
-        <button type="button" className="icon-button" aria-label="次年度" onClick={() => onChangeFiscalYear(fiscalYear + 1)}>
+        <span className="app-header__fiscal-year-value">{STRINGS.header.fiscalYearValue(fiscalYear)}</span>
+        <button type="button" className="icon-button" aria-label={STRINGS.header.nextYear} onClick={() => onChangeFiscalYear(fiscalYear + 1)}>
           <ChevronRight size={16} />
         </button>
       </div>
@@ -55,25 +56,25 @@ export function Header({
       <div className="app-header__spacer" />
 
       <span className={`dirty-indicator ${isDirty ? 'dirty-indicator--dirty' : 'dirty-indicator--clean'}`}>
-        {isDirty ? '未保存の変更があります' : '保存済み'}
+        {isDirty ? STRINGS.header.dirty : STRINGS.header.clean}
       </span>
 
       <button
         type="button"
         className="button button--ghost"
         onClick={() => {
-          if (window.confirm('モックデータを初期状態にリセットします。よろしいですか？（保存前の変更は失われます）')) {
+          if (window.confirm(STRINGS.header.resetConfirm)) {
             onReset();
           }
         }}
       >
         <RotateCcw size={14} />
-        モックデータ初期化
+        {STRINGS.header.resetButton}
       </button>
 
       <button type="button" className="button button--primary" onClick={onSave} disabled={!isDirty}>
         <Save size={14} />
-        保存
+        {STRINGS.header.saveButton}
       </button>
     </header>
   );

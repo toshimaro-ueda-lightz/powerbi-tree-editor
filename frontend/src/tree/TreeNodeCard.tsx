@@ -1,15 +1,9 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { ChevronRight, ChevronDown, Plus, Unlink, User } from 'lucide-react';
+import { STRINGS } from '../strings';
 import type { TreeFlowNode } from './types';
 
-const LEVEL_LABEL: Record<number, string> = {
-  1: 'L1',
-  2: 'L2',
-  3: 'L3',
-  4: 'L4',
-  5: 'L5',
-  6: 'L6',
-};
+const LEVEL_LABEL = STRINGS.treeNode.levelBadge;
 
 export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
   const { view, isSelected, isOnPath, isDimmed, isCollapsed, hasHiddenChildren, canAddChild, canDetach } = data;
@@ -38,7 +32,7 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
       <div className="tree-node__header">
         <span className={`tree-node__level-badge tree-node__level-badge--${view.scope}`}>{LEVEL_LABEL[view.level]}</span>
         {view.assignee && (
-          <span className="tree-node__assignee" title={`担当: ${view.assignee}`}>
+          <span className="tree-node__assignee" title={STRINGS.treeNode.assigneeTitle(view.assignee)}>
             <User size={11} aria-hidden />
             {view.assignee}
           </span>
@@ -47,7 +41,7 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
           <button
             type="button"
             className="tree-node__collapse-btn"
-            title={isCollapsed ? '子施策を表示' : '子施策を折りたたむ'}
+            title={isCollapsed ? STRINGS.treeNode.expand : STRINGS.treeNode.collapse}
             onClick={(e) => {
               e.stopPropagation();
               data.onToggleCollapse(view.node_id);
@@ -73,16 +67,16 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
         </div>
         <span className="tree-node__progress-pct">{pct}%</span>
       </div>
-      {!view.isLeaf && <span className="tree-node__calc-tag">計算値</span>}
+      {!view.isLeaf && <span className="tree-node__calc-tag">{STRINGS.treeNode.computed}</span>}
 
-      {view.level === 1 && view.area !== null && <div className="tree-node__area">可能面積 {view.area}</div>}
+      {view.level === 1 && view.area !== null && <div className="tree-node__area">{STRINGS.treeNode.area(view.area)}</div>}
 
       <div className="tree-node__actions">
         {canDetach && (
           <button
             type="button"
             className="tree-node__icon-btn tree-node__icon-btn--danger"
-            title="ツリーから外す（linkage解除）"
+            title={STRINGS.treeNode.detach}
             onClick={(e) => {
               e.stopPropagation();
               data.onDetach(view.node_id);
@@ -97,7 +91,7 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
         <button
           type="button"
           className="tree-node__add-btn"
-          title="子施策を追加"
+          title={STRINGS.treeNode.addChild}
           onClick={(e) => {
             e.stopPropagation();
             data.onAddChild(view.node_id);

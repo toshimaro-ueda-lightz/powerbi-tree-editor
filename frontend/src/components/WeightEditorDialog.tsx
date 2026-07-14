@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { TreeNodeView } from '../mock/types';
 import type { OperationResult } from '../mock/types';
+import { STRINGS } from '../strings';
 import { Modal } from './Modal';
 
 interface WeightEditorDialogProps {
@@ -22,14 +23,14 @@ export function WeightEditorDialog({ parentView, siblings, onSubmit, onClose }: 
   const isValid = Math.abs(diff) <= 1e-4;
 
   return (
-    <Modal title={`重み一括編集: ${parentView.name}`} onClose={onClose} width={480}>
-      <p className="modal__description">直下の施策（{siblings.length}件）の重みを編集します。合計が100%になるときのみ反映できます。</p>
+    <Modal title={STRINGS.weightDialog.title(parentView.name)} onClose={onClose} width={480}>
+      <p className="modal__description">{STRINGS.weightDialog.description(siblings.length)}</p>
 
       <table className="weight-table">
         <thead>
           <tr>
-            <th>施策名</th>
-            <th>重み (%)</th>
+            <th>{STRINGS.weightDialog.colName}</th>
+            <th>{STRINGS.weightDialog.colWeight}</th>
           </tr>
         </thead>
         <tbody>
@@ -52,16 +53,16 @@ export function WeightEditorDialog({ parentView, siblings, onSubmit, onClose }: 
       </table>
 
       <div className={`weight-sum ${isValid ? 'weight-sum--valid' : 'weight-sum--invalid'}`}>
-        合計: {total.toFixed(1)}%{' '}
-        {!isValid && <span>({diff > 0 ? `${diff.toFixed(1)}% 超過` : `${Math.abs(diff).toFixed(1)}% 不足`})</span>}
-        {isValid && <span>OK</span>}
+        {STRINGS.weightDialog.sum(total)}{' '}
+        {!isValid && <span>({diff > 0 ? STRINGS.weightDialog.surplus(diff) : STRINGS.weightDialog.shortfall(diff)})</span>}
+        {isValid && <span>{STRINGS.weightDialog.sumOk}</span>}
       </div>
 
       {error && <div className="banner banner--error">{error}</div>}
 
       <div className="modal__actions">
         <button type="button" className="button button--ghost" onClick={onClose}>
-          キャンセル
+          {STRINGS.common.cancel}
         </button>
         <button
           type="button"
@@ -77,7 +78,7 @@ export function WeightEditorDialog({ parentView, siblings, onSubmit, onClose }: 
             }
           }}
         >
-          反映
+          {STRINGS.weightDialog.apply}
         </button>
       </div>
     </Modal>

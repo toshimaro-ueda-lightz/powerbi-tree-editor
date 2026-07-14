@@ -1,4 +1,5 @@
 import { Crosshair, Maximize, Search } from 'lucide-react';
+import { STRINGS } from '../strings';
 
 interface SidebarProps {
   searchTerm: string;
@@ -31,41 +32,41 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="sidebar__section">
         <label className="sidebar__label" htmlFor="search-input">
-          施策名検索
+          {STRINGS.sidebar.searchLabel}
         </label>
         <div className="sidebar__search-box">
           <Search size={14} className="sidebar__search-icon" aria-hidden />
           <input
             id="search-input"
             type="text"
-            placeholder="施策名で検索"
+            placeholder={STRINGS.sidebar.searchPlaceholder}
             value={searchTerm}
             onChange={(e) => onChangeSearch(e.target.value)}
           />
         </div>
-        {searchTerm && <div className="sidebar__hint">{matchCount ?? 0} 件ヒット</div>}
+        {searchTerm && <div className="sidebar__hint">{STRINGS.sidebar.hitCount(matchCount ?? 0)}</div>}
       </div>
 
       <div className="sidebar__section">
         <label className="sidebar__label" htmlFor="level-filter">
-          階層フィルター
+          {STRINGS.sidebar.levelFilterLabel}
         </label>
         <select id="level-filter" value={maxLevel} onChange={(e) => onChangeMaxLevel(Number(e.target.value))}>
-          <option value={6}>全階層を表示</option>
-          <option value={5}>第5階層まで表示</option>
-          <option value={4}>第4階層まで表示</option>
-          <option value={3}>第3階層まで表示</option>
-          <option value={2}>第2階層まで表示</option>
-          <option value={1}>第1階層まで表示</option>
+          <option value={6}>{STRINGS.sidebar.levelOptions.all}</option>
+          <option value={5}>{STRINGS.sidebar.levelOptions.upTo5}</option>
+          <option value={4}>{STRINGS.sidebar.levelOptions.upTo4}</option>
+          <option value={3}>{STRINGS.sidebar.levelOptions.upTo3}</option>
+          <option value={2}>{STRINGS.sidebar.levelOptions.upTo2}</option>
+          <option value={1}>{STRINGS.sidebar.levelOptions.upTo1}</option>
         </select>
       </div>
 
       <div className="sidebar__section">
         <label className="sidebar__label" htmlFor="assignee-filter">
-          担当者フィルター
+          {STRINGS.sidebar.assigneeFilterLabel}
         </label>
         <select id="assignee-filter" value={assigneeFilter} onChange={(e) => onChangeAssigneeFilter(e.target.value)}>
-          <option value="">すべての担当者</option>
+          <option value="">{STRINGS.sidebar.assigneeAll}</option>
           {assigneeOptions.map((a) => (
             <option key={a} value={a}>
               {a}
@@ -77,24 +78,24 @@ export function Sidebar({
       <div className="sidebar__section sidebar__actions">
         <button type="button" className="button button--secondary" onClick={onFitView}>
           <Maximize size={14} />
-          全体表示
+          {STRINGS.sidebar.fitView}
         </button>
         <button type="button" className="button button--secondary" onClick={onFocusSelected} disabled={!hasSelection}>
           <Crosshair size={14} />
-          選択ノードへ移動
+          {STRINGS.sidebar.focusSelected}
         </button>
       </div>
 
       <div className="sidebar__legend">
-        <div className="sidebar__legend-title">凡例</div>
+        <div className="sidebar__legend-title">{STRINGS.sidebar.legendTitle}</div>
         <div className="sidebar__legend-item">
-          <span className="legend-swatch legend-swatch--common" /> 共通施策 (第1〜3階層)
+          <span className="legend-swatch legend-swatch--common" /> {STRINGS.sidebar.legendCommon}
         </div>
         <div className="sidebar__legend-item">
-          <span className="legend-swatch legend-swatch--dept" /> 部署固有施策 (第4〜6階層)
+          <span className="legend-swatch legend-swatch--dept" /> {STRINGS.sidebar.legendDept}
         </div>
         <div className="sidebar__legend-item">
-          <span className="legend-swatch legend-swatch--path" /> 選択施策までの経路
+          <span className="legend-swatch legend-swatch--path" /> {STRINGS.sidebar.legendPath}
         </div>
       </div>
     </aside>

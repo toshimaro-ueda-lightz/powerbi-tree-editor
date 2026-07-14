@@ -13,6 +13,7 @@ import {
   parentEdgeOf,
 } from '../domain';
 import type { DataStore, DepartmentRecord, NodeEdgeRecord, NodeRecord } from '../domain/types';
+import { STRINGS } from '../strings';
 import { buildSeed } from './seedData';
 import type {
   AddChildResult,
@@ -164,8 +165,8 @@ function findNode(nodeId: string): NodeRecord | undefined {
 
 export function updateNode(_departmentId: string, nodeId: string, patch: NodeUpdateInput): OperationResult {
   const node = findNode(nodeId);
-  if (!node) return { ok: false, reason: '対象の施策が見つかりません。' };
-  if (node.level < 4) return { ok: false, reason: '第1〜3階層の施策名・詳細は編集できません（共通ノードのため）。' };
+  if (!node) return { ok: false, reason: STRINGS.serviceReason.nodeNotFound };
+  if (node.level < 4) return { ok: false, reason: STRINGS.serviceReason.commonNodeReadonly };
 
   if (patch.name !== undefined) node.name = patch.name;
   if (patch.subtitle !== undefined) node.subtitle = patch.subtitle;
@@ -176,9 +177,9 @@ export function updateNode(_departmentId: string, nodeId: string, patch: NodeUpd
 
 export function addChildNode(departmentId: string, parentNodeId: string, input: NewChildInput): AddChildResult {
   const parent = findNode(parentNodeId);
-  if (!parent) return { ok: false, reason: '親施策が見つかりません。' };
+  if (!parent) return { ok: false, reason: STRINGS.serviceReason.parentNotFound };
   if (parent.level < 3 || parent.level > 5) {
-    return { ok: false, reason: '子の追加は第3→4／4→5／5→6階層でのみ可能です。' };
+    return { ok: false, reason: STRINGS.serviceReason.addChildLevelRange };
   }
 
   const deptEdges = activeEdges(store.edges).filter((e) => e.department_id === departmentId);
@@ -189,19 +190,19 @@ export function addChildNode(departmentId: string, parentNodeId: string, input: 
       .filter((p) => p.node_id === parentNodeId)
       .sort((a, b) => (a.as_of_date < b.as_of_date ? 1 : -1))[0];
     if (latest && latest.outcome_progress > 0) {
-      return { ok: false, reason: '成果進捗が入力済み（0%超）のため子施策を追加できません。成果進捗を0%にして保存してから追加してください。' };
+      return { ok: false, reason: STRINGS.serviceReason.addChildProgressLocked };
     }
   }
 
   if (input.weight < 0 || input.weight > 1) {
-    return { ok: false, reason: '重みは0〜1の範囲で入力してください。' };
+    return { ok: false, reason: STRINGS.serviceReason.weightRange };
   }
 
   const siblingWeights = childEdgesOf(parentNodeId, deptEdges).map((e) => e.weight);
   if (!isValidWeightSum([...siblingWeights, input.weight])) {
     return {
       ok: false,
-      reason: `兄弟施策の重み合計が1.0になりません（現在の合計 ${(siblingWeights.reduce((a, b) => a + b, 0) + input.weight).toFixed(4)}）。追加前に重み一括編集で調整してください。`,
+      reason: STRINGS.serviceReason.addChildWeightSum(siblingWeights.reduce((a, b) => a + b, 0) + input.weight),
     };
   }
 
@@ -233,15 +234,15 @@ export function addChildNode(departmentId: string, parentNodeId: string, input: 
 
 export function detachNode(departmentId: string, nodeId: string): OperationResult {
   const node = findNode(nodeId);
-  if (!node) return { ok: false, reason: '対象の施策が見つかりません。' };
+  if (!node) return { ok: false, reason: STRINGS.serviceReason.nodeNotFound };
 
   const deptEdges = activeEdges(store.edges).filter((e) => e.department_id === departmentId);
   if (!isLeafNode(node, deptEdges)) {
-    return { ok: false, reason: '子を持つ施策はツリーから外せません。末端の施策のみ解除できます。' };
+    return { ok: false, reason: STRINGS.serviceReason.detachHasChildren };
   }
 
   const edge = deptEdges.find((e) => e.child_node_id === nodeId);
-  if (!edge) return { ok: false, reason: 'このツリーに属していないため解除できません。' };
+  if (!edge) return { ok: false, reason: STRINGS.serviceReason.detachNotInTree };
 
   // Invalidate the edge (node + history retained, not physically deleted).
   const rawEdge = store.edges.find((e) => e.edge_id === edge.edge_id);
@@ -264,24 +265,22 @@ export function detachNode(departmentId: string, nodeId: string): OperationResul
 export function updateWeights(departmentId: string, parentNodeId: string, items: WeightUpdateItem[]): OperationResult {
   const weights = items.map((i) => i.weight);
   if (weights.some((w) => w < 0 || w > 1 || Number.isNaN(w))) {
-    return { ok: false, reason: '重みは0〜1の範囲で入力してください。' };
+    return { ok: false, reason: STRINGS.serviceReason.weightRange };
   }
   if (!isValidWeightSum(weights)) {
     const total = weights.reduce((a, b) => a + b, 0);
-    const diff = total - 1;
-    const diffLabel = diff > 0 ? `${diff.toFixed(4)} 超過` : `${Math.abs(diff).toFixed(4)} 不足`;
-    return { ok: false, reason: `重みの合計が1.0になっていません（現在 ${total.toFixed(4)} / ${diffLabel}）。` };
+    return { ok: false, reason: STRINGS.serviceReason.weightSumInvalid(total, total - 1) };
   }
 
   const deptEdges = activeEdges(store.edges).filter((e) => e.department_id === departmentId);
   const children = childEdgesOf(parentNodeId, deptEdges);
   if (children.length !== items.length) {
-    return { ok: false, reason: '子施策の構成が変更されています。画面を更新してやり直してください。' };
+    return { ok: false, reason: STRINGS.serviceReason.weightChildrenChanged };
   }
 
   for (const item of items) {
     const raw = store.edges.find((e) => e.department_id === departmentId && e.parent_node_id === parentNodeId && e.child_node_id === item.childNodeId && e.valid_to === null);
-    if (!raw) return { ok: false, reason: `対象の子施策(${item.childNodeId})が見つかりません。` };
+    if (!raw) return { ok: false, reason: STRINGS.serviceReason.weightChildNotFound(item.childNodeId) };
     raw.weight = item.weight;
   }
   touch(true);
@@ -290,14 +289,14 @@ export function updateWeights(departmentId: string, parentNodeId: string, items:
 
 export function updateProgress(departmentId: string, nodeId: string, outcomeProgress: number): OperationResult {
   const node = findNode(nodeId);
-  if (!node) return { ok: false, reason: '対象の施策が見つかりません。' };
+  if (!node) return { ok: false, reason: STRINGS.serviceReason.nodeNotFound };
 
   const deptEdges = activeEdges(store.edges).filter((e) => e.department_id === departmentId);
   if (!isLeafNode(node, deptEdges)) {
-    return { ok: false, reason: '成果進捗を直接入力できるのは末端施策のみです。上位階層は自動計算されます。' };
+    return { ok: false, reason: STRINGS.serviceReason.progressLeafOnly };
   }
   if (outcomeProgress < 0 || outcomeProgress > 1 || Number.isNaN(outcomeProgress)) {
-    return { ok: false, reason: '成果進捗は0〜100%の範囲で入力してください。' };
+    return { ok: false, reason: STRINGS.serviceReason.progressRange };
   }
 
   const existing = store.progressInputs.find((p) => p.node_id === nodeId && p.as_of_date === today());
@@ -312,8 +311,8 @@ export function updateProgress(departmentId: string, nodeId: string, outcomeProg
 
 export function updateFirstLevelArea(departmentId: string, fiscalYear: number, nodeId: string, area: number): OperationResult {
   const node = findNode(nodeId);
-  if (!node || node.level !== 1) return { ok: false, reason: '可能面積を編集できるのは第1階層の施策のみです。' };
-  if (area < 0 || Number.isNaN(area)) return { ok: false, reason: '面積は0以上の数値で入力してください。' };
+  if (!node || node.level !== 1) return { ok: false, reason: STRINGS.serviceReason.areaFirstLevelOnly };
+  if (area < 0 || Number.isNaN(area)) return { ok: false, reason: STRINGS.serviceReason.areaRange };
 
   const existing = store.firstLevelAreas.find((a) => a.department_id === departmentId && a.fiscal_year === fiscalYear && a.node_id === nodeId);
   if (existing) {

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { STRINGS } from '../strings';
 
 interface ModalProps {
   title: string;
@@ -21,7 +22,7 @@ export function Modal({ title, onClose, children, width = 420 }: ModalProps) {
       >
         <div className="modal__header">
           <h2>{title}</h2>
-          <button type="button" className="icon-button" aria-label="閉じる" onClick={onClose}>
+          <button type="button" className="icon-button" aria-label={STRINGS.common.close} onClick={onClose}>
             <X size={16} />
           </button>
         </div>

@@ -7,6 +7,7 @@ import { AddChildDialog } from './components/AddChildDialog';
 import { WeightEditorDialog } from './components/WeightEditorDialog';
 import { TreeCanvas, type TreeCanvasHandle } from './tree/TreeCanvas';
 import { useMockVersion } from './hooks/useMockVersion';
+import { STRINGS } from './strings';
 import { CURRENT_FISCAL_YEAR } from './mock/seedData';
 import {
   addChildNode,
@@ -83,9 +84,7 @@ function App() {
     const parent = tree.nodesById[parentNodeId];
     if (!parent) return;
     if (parent.isLeaf && parent.outcomeProgress > 0) {
-      setCanvasBanner(
-        '成果進捗が入力済み（0%超）のため子施策を追加できません。成果進捗を0%にして保存してから追加してください（確認なしで操作を拒否しています）。',
-      );
+      setCanvasBanner(STRINGS.app.addChildRejectedProgress);
       return;
     }
     setCanvasBanner(null);
@@ -93,7 +92,7 @@ function App() {
   }
 
   function handleAddChildSubmit(input: { name: string; subtitle?: string | null; assignee?: string | null; weight: number }) {
-    if (!addChildParentId) return { ok: false as const, reason: '内部エラー: 親施策が未指定です。' };
+    if (!addChildParentId) return { ok: false as const, reason: STRINGS.app.internalNoParent };
     const result = addChildNode(selectedDepartmentId, addChildParentId, input);
     if (result.ok) setSelectedNodeId(result.nodeId);
     return result;
@@ -143,7 +142,7 @@ function App() {
   }
 
   function handleWeightSubmit(items: { childNodeId: string; weight: number }[]) {
-    if (!weightEditorParentId) return { ok: false as const, reason: '内部エラー: 親施策が未指定です。' };
+    if (!weightEditorParentId) return { ok: false as const, reason: STRINGS.app.internalNoParent };
     return updateWeights(selectedDepartmentId, weightEditorParentId, items);
   }
 
@@ -191,14 +190,14 @@ function App() {
           {canvasBanner && (
             <div className="banner banner--error floating-banner">
               <span>{canvasBanner}</span>
-              <button type="button" className="icon-button" aria-label="閉じる" onClick={() => setCanvasBanner(null)}>
+              <button type="button" className="icon-button" aria-label={STRINGS.common.close} onClick={() => setCanvasBanner(null)}>
                 <X size={14} />
               </button>
             </div>
           )}
           {Object.keys(tree.nodesById).length === 0 ? (
             <div className="tree-canvas-empty">
-              <p>この部署・年度で表示できる施策がありません。</p>
+              <p>{STRINGS.app.emptyTree}</p>
             </div>
           ) : (
             <TreeCanvas
