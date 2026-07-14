@@ -1,0 +1,206 @@
+import { useEffect, useState } from 'react';
+import { Scale3d, Unlink } from 'lucide-react';
+import type { TreeNodeView } from '../mock/types';
+
+interface EditPanelProps {
+  selected: TreeNodeView | null;
+  parentView: TreeNodeView | null;
+  fiscalYear: number;
+  onUpdateNode: (patch: { name?: string; subtitle?: string | null; assignee?: string | null }) => void;
+  onUpdateProgress: (pct: number) => void;
+  onUpdateArea: (value: number) => void;
+  onOpenWeightEditor: (parentNodeId: string) => void;
+  onDetach: (nodeId: string) => void;
+  errorMessage: string | null;
+}
+
+const LEVEL_TEXT: Record<number, string> = {
+  1: '第1階層',
+  2: '第2階層',
+  3: '第3階層',
+  4: '第4階層',
+  5: '第5階層',
+  6: '第6階層',
+};
+
+export function EditPanel({
+  selected,
+  parentView,
+  fiscalYear,
+  onUpdateNode,
+  onUpdateProgress,
+  onUpdateArea,
+  onOpenWeightEditor,
+  onDetach,
+  errorMessage,
+}: EditPanelProps) {
+  const [draftName, setDraftName] = useState('');
+  const [draftSubtitle, setDraftSubtitle] = useState('');
+  const [draftAssignee, setDraftAssignee] = useState('');
+  const [draftArea, setDraftArea] = useState('');
+
+  useEffect(() => {
+    if (!selected) return;
+    setDraftName(selected.name);
+    setDraftSubtitle(selected.subtitle ?? '');
+    setDraftAssignee(selected.assignee ?? '');
+    setDraftArea(selected.area !== null ? String(selected.area) : '');
+  }, [selected]);
+
+  if (!selected) {
+    return (
+      <aside className="edit-panel edit-panel--empty">
+        <p>ツリー上の施策を選択すると、ここに詳細が表示されます。</p>
+      </aside>
+    );
+  }
+
+  const editableBasic = selected.level >= 4;
+  const dirtyBasic =
+    draftName !== selected.name || draftSubtitle !== (selected.subtitle ?? '') || draftAssignee !== (selected.assignee ?? '');
+
+  return (
+    <aside className="edit-panel">
+      <h2 className="edit-panel__title">施策詳細</h2>
+
+      {errorMessage && <div className="banner banner--error">{errorMessage}</div>}
+
+      <dl className="edit-panel__meta">
+        <dt>ノードコード</dt>
+        <dd>{selected.node_id}</dd>
+        <dt>階層</dt>
+        <dd>{LEVEL_TEXT[selected.level]}</dd>
+        <dt>区分</dt>
+        <dd>{selected.scope === 'common' ? '共通施策' : '部署固有施策'}</dd>
+        <dt>親施策</dt>
+        <dd>{parentView ? parentView.name : 'なし（第1階層）'}</dd>
+      </dl>
+
+      <div className="edit-panel__field">
+        <label htmlFor="field-name">施策名</label>
+        <input
+          id="field-name"
+          type="text"
+          value={draftName}
+          disabled={!editableBasic}
+          onChange={(e) => setDraftName(e.target.value)}
+        />
+      </div>
+
+      <div className="edit-panel__field">
+        <label htmlFor="field-subtitle">サブタイトル</label>
+        <input
+          id="field-subtitle"
+          type="text"
+          value={draftSubtitle}
+          disabled={!editableBasic}
+          onChange={(e) => setDraftSubtitle(e.target.value)}
+        />
+      </div>
+
+      <div className="edit-panel__field">
+        <label htmlFor="field-assignee">担当者</label>
+        <input
+          id="field-assignee"
+          type="text"
+          value={draftAssignee}
+          disabled={!editableBasic}
+          onChange={(e) => setDraftAssignee(e.target.value)}
+        />
+      </div>
+
+      {editableBasic ? (
+        <button
+          type="button"
+          className="button button--primary edit-panel__save-btn"
+          disabled={!dirtyBasic || draftName.trim() === ''}
+          onClick={() =>
+            onUpdateNode({
+              name: draftName.trim(),
+              subtitle: draftSubtitle.trim() === '' ? null : draftSubtitle,
+              assignee: draftAssignee.trim() === '' ? null : draftAssignee,
+            })
+          }
+        >
+          基本情報を保存
+        </button>
+      ) : (
+        <p className="edit-panel__readonly-note">第1〜3階層は共通施策のため、施策名・担当者は編集できません（重みのみ部署別に編集可能）。</p>
+      )}
+
+      <div className="edit-panel__field">
+        <label>親からの重み</label>
+        <div className="edit-panel__weight-row">
+          <span className="edit-panel__weight-value">
+            {selected.weightFromParent !== null ? `${(selected.weightFromParent * 100).toFixed(1)}%` : 'なし（第1階層）'}
+          </span>
+          {selected.parentNodeId && (
+            <button type="button" className="button button--secondary button--small" onClick={() => onOpenWeightEditor(selected.parentNodeId!)}>
+              <Scale3d size={13} />
+              兄弟の重みを一括編集
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="edit-panel__field">
+        <label htmlFor="field-progress">成果進捗</label>
+        {selected.isLeaf ? (
+          <div className="edit-panel__progress-editor">
+            <input
+              id="field-progress"
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(selected.outcomeProgress * 100)}
+              onChange={(e) => onUpdateProgress(Number(e.target.value))}
+            />
+            <div className="edit-panel__progress-number-row">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={Math.round(selected.outcomeProgress * 100)}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (!Number.isNaN(v)) onUpdateProgress(Math.min(100, Math.max(0, v)));
+                }}
+              />
+              <span>%</span>
+            </div>
+          </div>
+        ) : (
+          <div className="edit-panel__computed-value">
+            {Math.round(selected.outcomeProgress * 100)}% <span className="tag tag--muted">計算値（子の重み付き合計）</span>
+          </div>
+        )}
+      </div>
+
+      {selected.level === 1 && (
+        <div className="edit-panel__field">
+          <label htmlFor="field-area">可能面積（{fiscalYear}年度）</label>
+          <input
+            id="field-area"
+            type="number"
+            min={0}
+            value={draftArea}
+            placeholder="未設定"
+            onChange={(e) => setDraftArea(e.target.value)}
+            onBlur={() => {
+              const v = Number(draftArea);
+              if (draftArea.trim() !== '' && !Number.isNaN(v)) onUpdateArea(v);
+            }}
+          />
+          {selected.area === null && <p className="edit-panel__readonly-note">{fiscalYear}年度の可能面積データがありません。</p>}
+        </div>
+      )}
+
+      {selected.isLeaf && (
+        <button type="button" className="button button--danger edit-panel__detach-btn" onClick={() => onDetach(selected.node_id)}>
+          <Unlink size={14} />
+          ツリーから外す（linkage解除）
+        </button>
+      )}
+    </aside>
+  );
+}
