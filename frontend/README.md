@@ -7,6 +7,8 @@ Power BI変革ツリーの更新作業を行うための操作イメージを検
 - React 19 + TypeScript + Vite
 - [`@xyflow/react`](https://reactflow.dev/)（React Flow）＋ [`elkjs`](https://github.com/kieler/elkjs) による自動レイアウト（`layered`, 左→右）
 - [`lucide-react`](https://lucide.dev/) アイコン
+- [`styled-components`](https://styled-components.com/)（CSS-in-JS）。デザイントークンは `src/theme.ts` の `ThemeProvider` テーマ、グローバルリセットは `src/GlobalStyle.ts`（`createGlobalStyle`）で管理
+- [Storybook](https://storybook.dev/)（`@storybook/react-vite`）で表示系コンポーネントを個別に確認可能
 - [Vitest](https://vitest.dev/) + [@testing-library/react](https://testing-library.com/react)
 
 ## セットアップ
@@ -54,6 +56,20 @@ npm run test:watch
 
 でウォッチモード実行できます。
 
+## Storybook
+
+```bash
+npm run storybook
+```
+
+`http://localhost:6006` で Storybook が起動し、表示系コンポーネント（Header / Sidebar / EditPanel / AddChildDialog / WeightEditorDialog / Modal / TreeNodeCard）を単体で確認できます。`TreeCanvas` は React Flow のキャンバス全体に依存するため対象外です。
+
+```bash
+npm run build-storybook
+```
+
+`storybook-static/` に静的ビルドを出力します（Git管理対象外）。
+
 ## ディレクトリ構成（抜粋）
 
 ```
@@ -61,7 +77,9 @@ src/
   domain/     # 進捗計算・重み検証・末端判定などの純関数（UI非依存）
   mock/       # シードデータ・モックサービス（localStorage永続化、コンポーネントはここ経由でのみデータに触れる）
   tree/       # React Flow + elkjs によるツリー描画
-  components/ # ヘッダー・サイドバー・編集パネル・各種ダイアログ
+  components/ # ヘッダー・サイドバー・編集パネル・各種ダイアログ（*.styled.ts に styled-components 定義）
+  theme.ts        # styled-components ThemeProvider 用デザイントークン
+  GlobalStyle.ts  # createGlobalStyle によるグローバルリセット＋CSS変数供給
   App.tsx     # 画面全体の状態管理・組み立て
 ```
 

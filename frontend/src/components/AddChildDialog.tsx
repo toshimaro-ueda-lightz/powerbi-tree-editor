@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { AddChildResult, TreeNodeView } from '../mock/types';
 import { STRINGS } from '../strings';
 import { Modal } from './Modal';
+import { Actions as ModalActions, Description } from './Modal.styled';
+import { Banner, Button, FieldGroup, Hint } from './ui';
 
 interface AddChildDialogProps {
   parentView: TreeNodeView;
@@ -21,21 +23,21 @@ export function AddChildDialog({ parentView, suggestedWeightPct, onSubmit, onClo
 
   return (
     <Modal title={STRINGS.addChildDialog.title(parentView.name)} onClose={onClose} width={440}>
-      <p className="modal__description">{STRINGS.addChildDialog.description(childLevel, parentView.name)}</p>
+      <Description>{STRINGS.addChildDialog.description(childLevel, parentView.name)}</Description>
 
-      <div className="edit-panel__field">
+      <FieldGroup>
         <label htmlFor="new-child-name">{STRINGS.addChildDialog.nameRequired}</label>
         <input id="new-child-name" type="text" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-      </div>
-      <div className="edit-panel__field">
+      </FieldGroup>
+      <FieldGroup>
         <label htmlFor="new-child-subtitle">{STRINGS.addChildDialog.subtitle}</label>
         <input id="new-child-subtitle" type="text" value={subtitle} onChange={(e) => setSubtitle(e.target.value)} />
-      </div>
-      <div className="edit-panel__field">
+      </FieldGroup>
+      <FieldGroup>
         <label htmlFor="new-child-assignee">{STRINGS.addChildDialog.assignee}</label>
         <input id="new-child-assignee" type="text" value={assignee} onChange={(e) => setAssignee(e.target.value)} />
-      </div>
-      <div className="edit-panel__field">
+      </FieldGroup>
+      <FieldGroup>
         <label htmlFor="new-child-weight">{STRINGS.addChildDialog.weightLabel}</label>
         <input
           id="new-child-weight"
@@ -46,18 +48,18 @@ export function AddChildDialog({ parentView, suggestedWeightPct, onSubmit, onClo
           value={weightPct}
           onChange={(e) => setWeightPct(e.target.value)}
         />
-        <p className="sidebar__hint">{STRINGS.addChildDialog.weightHint}</p>
-      </div>
+        <Hint as="p">{STRINGS.addChildDialog.weightHint}</Hint>
+      </FieldGroup>
 
-      {error && <div className="banner banner--error">{error}</div>}
+      {error && <Banner>{error}</Banner>}
 
-      <div className="modal__actions">
-        <button type="button" className="button button--ghost" onClick={onClose}>
+      <ModalActions>
+        <Button type="button" $variant="ghost" onClick={onClose}>
           {STRINGS.common.cancel}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="button button--primary"
+          $variant="primary"
           disabled={name.trim() === ''}
           onClick={() => {
             const weight = Number(weightPct) / 100;
@@ -75,8 +77,8 @@ export function AddChildDialog({ parentView, suggestedWeightPct, onSubmit, onClo
           }}
         >
           {STRINGS.addChildDialog.add}
-        </button>
-      </div>
+        </Button>
+      </ModalActions>
     </Modal>
   );
 }

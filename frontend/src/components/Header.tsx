@@ -1,6 +1,9 @@
 import { ChevronLeft, ChevronRight, RotateCcw, Save } from 'lucide-react';
 import type { DepartmentRecord } from '../domain/types';
 import { STRINGS } from '../strings';
+import { CURRENT_FISCAL_YEAR } from '../mock/seedData';
+import { Button, IconButton } from './ui';
+import { Brand, DirtyIndicator, Field, FiscalYearField, FiscalYearValue, HeaderBar, Spacer } from './Header.styled';
 
 interface HeaderProps {
   departments: DepartmentRecord[];
@@ -23,11 +26,13 @@ export function Header({
   onSave,
   onReset,
 }: HeaderProps) {
-  return (
-    <header className="app-header">
-      <div className="app-header__brand">{STRINGS.header.brand}</div>
+  const nextYearDisabled = fiscalYear >= CURRENT_FISCAL_YEAR;
 
-      <div className="app-header__field">
+  return (
+    <HeaderBar>
+      <Brand>{STRINGS.header.brand}</Brand>
+
+      <Field>
         <label htmlFor="department-select">{STRINGS.header.departmentLabel}</label>
         <select
           id="department-select"
@@ -40,28 +45,32 @@ export function Header({
             </option>
           ))}
         </select>
-      </div>
+      </Field>
 
-      <div className="app-header__field app-header__fiscal-year">
+      <FiscalYearField>
         <label>{STRINGS.header.fiscalYearLabel}</label>
-        <button type="button" className="icon-button" aria-label={STRINGS.header.prevYear} onClick={() => onChangeFiscalYear(fiscalYear - 1)}>
+        <IconButton type="button" aria-label={STRINGS.header.prevYear} onClick={() => onChangeFiscalYear(fiscalYear - 1)}>
           <ChevronLeft size={16} />
-        </button>
-        <span className="app-header__fiscal-year-value">{STRINGS.header.fiscalYearValue(fiscalYear)}</span>
-        <button type="button" className="icon-button" aria-label={STRINGS.header.nextYear} onClick={() => onChangeFiscalYear(fiscalYear + 1)}>
+        </IconButton>
+        <FiscalYearValue>{STRINGS.header.fiscalYearValue(fiscalYear)}</FiscalYearValue>
+        <IconButton
+          type="button"
+          aria-label={STRINGS.header.nextYear}
+          aria-disabled={nextYearDisabled}
+          disabled={nextYearDisabled}
+          onClick={() => onChangeFiscalYear(fiscalYear + 1)}
+        >
           <ChevronRight size={16} />
-        </button>
-      </div>
+        </IconButton>
+      </FiscalYearField>
 
-      <div className="app-header__spacer" />
+      <Spacer />
 
-      <span className={`dirty-indicator ${isDirty ? 'dirty-indicator--dirty' : 'dirty-indicator--clean'}`}>
-        {isDirty ? STRINGS.header.dirty : STRINGS.header.clean}
-      </span>
+      <DirtyIndicator $dirty={isDirty}>{isDirty ? STRINGS.header.dirty : STRINGS.header.clean}</DirtyIndicator>
 
-      <button
+      <Button
         type="button"
-        className="button button--ghost"
+        $variant="ghost"
         onClick={() => {
           if (window.confirm(STRINGS.header.resetConfirm)) {
             onReset();
@@ -70,12 +79,12 @@ export function Header({
       >
         <RotateCcw size={14} />
         {STRINGS.header.resetButton}
-      </button>
+      </Button>
 
-      <button type="button" className="button button--primary" onClick={onSave} disabled={!isDirty}>
+      <Button type="button" $variant="primary" onClick={onSave} disabled={!isDirty}>
         <Save size={14} />
         {STRINGS.header.saveButton}
-      </button>
-    </header>
+      </Button>
+    </HeaderBar>
   );
 }

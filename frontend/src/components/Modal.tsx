@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { STRINGS } from '../strings';
+import { IconButton } from './ui';
+import { Body, Box, Header, Overlay } from './Modal.styled';
 
 interface ModalProps {
   title: string;
@@ -11,23 +13,16 @@ interface ModalProps {
 
 export function Modal({ title, onClose, children, width = 420 }: ModalProps) {
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal"
-        style={{ width }}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <div className="modal__header">
+    <Overlay onClick={onClose}>
+      <Box style={{ width }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+        <Header>
           <h2>{title}</h2>
-          <button type="button" className="icon-button" aria-label={STRINGS.common.close} onClick={onClose}>
+          <IconButton type="button" aria-label={STRINGS.common.close} onClick={onClose}>
             <X size={16} />
-          </button>
-        </div>
-        <div className="modal__body">{children}</div>
-      </div>
-    </div>
+          </IconButton>
+        </Header>
+        <Body>{children}</Body>
+      </Box>
+    </Overlay>
   );
 }

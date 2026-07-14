@@ -3,6 +3,9 @@ import type { TreeNodeView } from '../mock/types';
 import type { OperationResult } from '../mock/types';
 import { STRINGS } from '../strings';
 import { Modal } from './Modal';
+import { Actions as ModalActions, Description } from './Modal.styled';
+import { Banner, Button } from './ui';
+import { WeightSum, WeightTable } from './WeightEditorDialog.styled';
 
 interface WeightEditorDialogProps {
   parentView: TreeNodeView;
@@ -24,9 +27,9 @@ export function WeightEditorDialog({ parentView, siblings, onSubmit, onClose }: 
 
   return (
     <Modal title={STRINGS.weightDialog.title(parentView.name)} onClose={onClose} width={480}>
-      <p className="modal__description">{STRINGS.weightDialog.description(siblings.length)}</p>
+      <Description>{STRINGS.weightDialog.description(siblings.length)}</Description>
 
-      <table className="weight-table">
+      <WeightTable>
         <thead>
           <tr>
             <th>{STRINGS.weightDialog.colName}</th>
@@ -50,23 +53,23 @@ export function WeightEditorDialog({ parentView, siblings, onSubmit, onClose }: 
             </tr>
           ))}
         </tbody>
-      </table>
+      </WeightTable>
 
-      <div className={`weight-sum ${isValid ? 'weight-sum--valid' : 'weight-sum--invalid'}`}>
+      <WeightSum $valid={isValid}>
         {STRINGS.weightDialog.sum(total)}{' '}
         {!isValid && <span>({diff > 0 ? STRINGS.weightDialog.surplus(diff) : STRINGS.weightDialog.shortfall(diff)})</span>}
         {isValid && <span>{STRINGS.weightDialog.sumOk}</span>}
-      </div>
+      </WeightSum>
 
-      {error && <div className="banner banner--error">{error}</div>}
+      {error && <Banner>{error}</Banner>}
 
-      <div className="modal__actions">
-        <button type="button" className="button button--ghost" onClick={onClose}>
+      <ModalActions>
+        <Button type="button" $variant="ghost" onClick={onClose}>
           {STRINGS.common.cancel}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="button button--primary"
+          $variant="primary"
           disabled={!isValid}
           onClick={() => {
             const items = siblings.map((s) => ({ childNodeId: s.node_id, weight: Number(drafts[s.node_id]) / 100 }));
@@ -79,8 +82,8 @@ export function WeightEditorDialog({ parentView, siblings, onSubmit, onClose }: 
           }}
         >
           {STRINGS.weightDialog.apply}
-        </button>
-      </div>
+        </Button>
+      </ModalActions>
     </Modal>
   );
 }

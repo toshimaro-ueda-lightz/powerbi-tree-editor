@@ -5,6 +5,8 @@ import { Sidebar } from './components/Sidebar';
 import { EditPanel } from './components/EditPanel';
 import { AddChildDialog } from './components/AddChildDialog';
 import { WeightEditorDialog } from './components/WeightEditorDialog';
+import { IconButton } from './components/ui';
+import { AppShell, AppBody, AppMain, TreeCanvasEmpty, FloatingBanner } from './App.styled';
 import { TreeCanvas, type TreeCanvasHandle } from './tree/TreeCanvas';
 import { useMockVersion } from './hooks/useMockVersion';
 import { STRINGS } from './strings';
@@ -161,7 +163,7 @@ function App() {
   const addChildParent = addChildParentId ? tree.nodesById[addChildParentId] : null;
 
   return (
-    <div className="app-shell">
+    <AppShell>
       <Header
         departments={departments}
         selectedDepartmentId={selectedDepartmentId}
@@ -172,7 +174,7 @@ function App() {
         onSave={handleSave}
         onReset={handleReset}
       />
-      <div className="app-body">
+      <AppBody>
         <Sidebar
           searchTerm={searchTerm}
           onChangeSearch={setSearchTerm}
@@ -186,19 +188,19 @@ function App() {
           hasSelection={selectedNodeId !== null}
           matchCount={matchCount}
         />
-        <main className="app-main">
+        <AppMain>
           {canvasBanner && (
-            <div className="banner banner--error floating-banner">
+            <FloatingBanner>
               <span>{canvasBanner}</span>
-              <button type="button" className="icon-button" aria-label={STRINGS.common.close} onClick={() => setCanvasBanner(null)}>
+              <IconButton type="button" aria-label={STRINGS.common.close} onClick={() => setCanvasBanner(null)}>
                 <X size={14} />
-              </button>
-            </div>
+              </IconButton>
+            </FloatingBanner>
           )}
           {Object.keys(tree.nodesById).length === 0 ? (
-            <div className="tree-canvas-empty">
+            <TreeCanvasEmpty>
               <p>{STRINGS.app.emptyTree}</p>
-            </div>
+            </TreeCanvasEmpty>
           ) : (
             <TreeCanvas
               ref={treeCanvasRef}
@@ -212,7 +214,7 @@ function App() {
               assigneeFilter={assigneeFilter}
             />
           )}
-        </main>
+        </AppMain>
         <EditPanel
           selected={selectedView}
           parentView={parentView}
@@ -224,7 +226,7 @@ function App() {
           onDetach={handleDetach}
           errorMessage={panelError}
         />
-      </div>
+      </AppBody>
 
       {addChildParent && (
         <AddChildDialog
@@ -243,7 +245,7 @@ function App() {
           onClose={() => setWeightEditorParentId(null)}
         />
       )}
-    </div>
+    </AppShell>
   );
 }
 

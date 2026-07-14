@@ -2,6 +2,24 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { ChevronRight, ChevronDown, Plus, Unlink, User } from 'lucide-react';
 import { STRINGS } from '../strings';
 import type { TreeFlowNode } from './types';
+import {
+  AddButton,
+  Area,
+  Assignee,
+  CalcTag,
+  CardHeader,
+  CollapseButton,
+  LevelBadge,
+  Name,
+  NodeActions,
+  NodeCard,
+  NodeIconButton,
+  ProgressFill,
+  ProgressPct,
+  ProgressRow,
+  ProgressTrack,
+  Subtitle,
+} from './TreeNodeCard.styled';
 
 const LEVEL_LABEL = STRINGS.treeNode.levelBadge;
 
@@ -9,19 +27,12 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
   const { view, isSelected, isOnPath, isDimmed, isCollapsed, hasHiddenChildren, canAddChild, canDetach } = data;
   const pct = Math.round(view.outcomeProgress * 100);
 
-  const classNames = [
-    'tree-node',
-    `tree-node--scope-${view.scope}`,
-    isSelected ? 'tree-node--selected' : '',
-    isOnPath && !isSelected ? 'tree-node--on-path' : '',
-    isDimmed ? 'tree-node--dimmed' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
   return (
-    <div
-      className={classNames}
+    <NodeCard
+      $scope={view.scope}
+      $selected={isSelected}
+      $onPath={isOnPath}
+      $dimmed={isDimmed}
       onClick={(e) => {
         e.stopPropagation();
         data.onSelect(view.node_id);
@@ -29,18 +40,17 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
       data-testid={`tree-node-${view.node_id}`}
     >
       <Handle type="target" position={Position.Left} style={{ opacity: view.level === 1 ? 0 : 1 }} />
-      <div className="tree-node__header">
-        <span className={`tree-node__level-badge tree-node__level-badge--${view.scope}`}>{LEVEL_LABEL[view.level]}</span>
+      <CardHeader>
+        <LevelBadge $scope={view.scope}>{LEVEL_LABEL[view.level]}</LevelBadge>
         {view.assignee && (
-          <span className="tree-node__assignee" title={STRINGS.treeNode.assigneeTitle(view.assignee)}>
+          <Assignee title={STRINGS.treeNode.assigneeTitle(view.assignee)}>
             <User size={11} aria-hidden />
             {view.assignee}
-          </span>
+          </Assignee>
         )}
         {hasHiddenChildren && (
-          <button
+          <CollapseButton
             type="button"
-            className="tree-node__collapse-btn"
             title={isCollapsed ? STRINGS.treeNode.expand : STRINGS.treeNode.collapse}
             onClick={(e) => {
               e.stopPropagation();
@@ -48,34 +58,27 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
             }}
           >
             {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-          </button>
+          </CollapseButton>
         )}
-      </div>
+      </CardHeader>
 
-      <div className="tree-node__name" title={view.name}>
-        {view.name}
-      </div>
-      {view.subtitle && (
-        <div className="tree-node__subtitle" title={view.subtitle}>
-          {view.subtitle}
-        </div>
-      )}
+      <Name title={view.name}>{view.name}</Name>
+      {view.subtitle && <Subtitle title={view.subtitle}>{view.subtitle}</Subtitle>}
 
-      <div className="tree-node__progress-row">
-        <div className="tree-node__progress-track">
-          <div className="tree-node__progress-fill" style={{ width: `${pct}%` }} />
-        </div>
-        <span className="tree-node__progress-pct">{pct}%</span>
-      </div>
-      {!view.isLeaf && <span className="tree-node__calc-tag">{STRINGS.treeNode.computed}</span>}
+      <ProgressRow>
+        <ProgressTrack>
+          <ProgressFill style={{ width: `${pct}%` }} />
+        </ProgressTrack>
+        <ProgressPct>{pct}%</ProgressPct>
+      </ProgressRow>
+      {!view.isLeaf && <CalcTag>{STRINGS.treeNode.computed}</CalcTag>}
 
-      {view.level === 1 && view.area !== null && <div className="tree-node__area">{STRINGS.treeNode.area(view.area)}</div>}
+      {view.level === 1 && view.area !== null && <Area>{STRINGS.treeNode.area(view.area)}</Area>}
 
-      <div className="tree-node__actions">
+      <NodeActions>
         {canDetach && (
-          <button
+          <NodeIconButton
             type="button"
-            className="tree-node__icon-btn tree-node__icon-btn--danger"
             title={STRINGS.treeNode.detach}
             onClick={(e) => {
               e.stopPropagation();
@@ -83,14 +86,13 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
             }}
           >
             <Unlink size={13} />
-          </button>
+          </NodeIconButton>
         )}
-      </div>
+      </NodeActions>
 
       {canAddChild && (
-        <button
+        <AddButton
           type="button"
-          className="tree-node__add-btn"
           title={STRINGS.treeNode.addChild}
           onClick={(e) => {
             e.stopPropagation();
@@ -98,10 +100,10 @@ export function TreeNodeCard({ data }: NodeProps<TreeFlowNode>) {
           }}
         >
           <Plus size={14} />
-        </button>
+        </AddButton>
       )}
 
       <Handle type="source" position={Position.Right} style={{ opacity: view.level === 6 ? 0 : 1 }} />
-    </div>
+    </NodeCard>
   );
 }
