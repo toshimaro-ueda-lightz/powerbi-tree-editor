@@ -43,5 +43,13 @@
 
     "moduleResolution": "bundler",
     "noEmit": true
-  }
+  },
+  // Root only covers the DB layer (db/, tests/, src/). frontend/, api/, and
+  // packages/* are independent TS projects with their own tsconfig (each
+  // typechecked separately: `tsc -b` for frontend, `tsc --noEmit -p ...` for
+  // api/domain) — without this they'd otherwise be picked up here too by
+  // TS's "include everything under this directory" default, and fail under
+  // rules (exactOptionalPropertyTypes, noUncheckedIndexedAccess) they were
+  // never configured for.
+  "include": ["db", "tests", "src"]
 }

@@ -1,5 +1,5 @@
 import styled, { css } from 'styled-components';
-import type { Scope } from '../domain/types';
+import type { Scope } from '@powerbi-tree-editor/domain';
 
 export const NodeCard = styled.div<{ $scope: Scope; $selected: boolean; $onPath: boolean; $dimmed: boolean }>`
   width: 236px;

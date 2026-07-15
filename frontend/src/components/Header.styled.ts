@@ -55,11 +55,11 @@ export const Spacer = styled.div`
   flex: 1;
 `;
 
-export const DirtyIndicator = styled.span<{ $dirty: boolean }>`
+export const DirtyIndicator = styled.span<{ $dirty: boolean; $saving?: boolean }>`
   font-size: 12px;
   white-space: nowrap;
   padding: 4px 10px;
   border-radius: 999px;
-  color: ${({ $dirty, theme }) => ($dirty ? theme.colors.dirtyText : theme.colors.success)};
-  background: ${({ $dirty, theme }) => ($dirty ? theme.colors.dirtyBg : theme.colors.successBg)};
+  color: ${({ $dirty, $saving, theme }) => ($saving ? theme.colors.textMuted : $dirty ? theme.colors.dirtyText : theme.colors.success)};
+  background: ${({ $dirty, $saving, theme }) => ($saving ? theme.colors.surfaceMuted : $dirty ? theme.colors.dirtyBg : theme.colors.successBg)};
 `;

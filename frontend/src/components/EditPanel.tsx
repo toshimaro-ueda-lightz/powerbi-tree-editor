@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Scale3d, Unlink } from 'lucide-react';
-import type { TreeNodeView } from '../mock/types';
+import type { TreeNodeView } from '../types';
 import { STRINGS } from '../strings';
 import { Banner, Button, FieldGroup, Tag } from './ui';
 import {

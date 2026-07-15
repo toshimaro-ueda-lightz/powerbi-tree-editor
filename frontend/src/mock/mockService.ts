@@ -11,19 +11,19 @@ import {
   mapProgressLookup,
   normalizeWeights,
   parentEdgeOf,
-} from '../domain';
-import type { DataStore, DepartmentRecord, NodeEdgeRecord, NodeRecord } from '../domain/types';
+  type DataStore,
+  type DepartmentRecord,
+  type NewChildInput,
+  type NodeEdgeRecord,
+  type NodeRecord,
+  type NodeUpdateInput,
+  type TreeNodeView,
+  type TreeSnapshot,
+  type WeightUpdateItem,
+} from '@powerbi-tree-editor/domain';
 import { STRINGS } from '../strings';
+import type { AddChildResult, OperationResult } from '../types';
 import { buildSeed } from './seedData';
-import type {
-  AddChildResult,
-  NewChildInput,
-  NodeUpdateInput,
-  OperationResult,
-  TreeNodeView,
-  TreeSnapshot,
-  WeightUpdateItem,
-} from './types';
 
 const STORAGE_KEY = 'tree-editor-mock-data-v1';
 

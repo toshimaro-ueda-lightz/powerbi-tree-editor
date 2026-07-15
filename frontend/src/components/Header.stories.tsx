@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Header } from './Header';
 import { storyDepartments } from '../mock/storyFixtures';
-import { CURRENT_FISCAL_YEAR } from '../mock/seedData';
+import { CURRENT_FISCAL_YEAR } from '../config';
 
 const meta = {
   title: 'Components/Header',
@@ -21,8 +21,9 @@ export const Default: Story = {
     fiscalYear: CURRENT_FISCAL_YEAR - 1,
     onChangeFiscalYear: () => {},
     isDirty: false,
+    saveStatus: 'idle',
     onSave: () => {},
-    onReset: () => {},
+    onDiscard: () => {},
   },
 };
 
@@ -30,6 +31,22 @@ export const Dirty: Story = {
   args: {
     ...Default.args,
     isDirty: true,
+  },
+};
+
+export const Saving: Story = {
+  args: {
+    ...Default.args,
+    isDirty: true,
+    saveStatus: 'saving',
+  },
+};
+
+export const SaveFailed: Story = {
+  args: {
+    ...Default.args,
+    isDirty: true,
+    saveStatus: 'error',
   },
 };
 
