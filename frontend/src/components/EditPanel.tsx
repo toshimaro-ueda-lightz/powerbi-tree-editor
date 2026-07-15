@@ -2,6 +2,21 @@ import { useEffect, useState } from 'react';
 import { Scale3d, Unlink } from 'lucide-react';
 import type { TreeNodeView } from '../mock/types';
 import { STRINGS } from '../strings';
+import { Banner, Button, FieldGroup, Tag } from './ui';
+import {
+  ComputedValue,
+  DetachButton,
+  EditPanelAside,
+  EditPanelEmpty,
+  Meta,
+  ProgressEditor,
+  ProgressNumberRow,
+  ReadonlyNote,
+  SaveButton,
+  Title,
+  WeightRow,
+  WeightValue,
+} from './EditPanel.styled';
 
 interface EditPanelProps {
   selected: TreeNodeView | null;
@@ -43,9 +58,9 @@ export function EditPanel({
 
   if (!selected) {
     return (
-      <aside className="edit-panel edit-panel--empty">
+      <EditPanelEmpty>
         <p>{STRINGS.editPanel.emptyHint}</p>
-      </aside>
+      </EditPanelEmpty>
     );
   }
 
@@ -54,12 +69,12 @@ export function EditPanel({
     draftName !== selected.name || draftSubtitle !== (selected.subtitle ?? '') || draftAssignee !== (selected.assignee ?? '');
 
   return (
-    <aside className="edit-panel">
-      <h2 className="edit-panel__title">{STRINGS.editPanel.title}</h2>
+    <EditPanelAside>
+      <Title>{STRINGS.editPanel.title}</Title>
 
-      {errorMessage && <div className="banner banner--error">{errorMessage}</div>}
+      {errorMessage && <Banner>{errorMessage}</Banner>}
 
-      <dl className="edit-panel__meta">
+      <Meta>
         <dt>{STRINGS.editPanel.nodeCode}</dt>
         <dd>{selected.node_id}</dd>
         <dt>{STRINGS.editPanel.level}</dt>
@@ -68,9 +83,9 @@ export function EditPanel({
         <dd>{selected.scope === 'common' ? STRINGS.editPanel.scopeCommon : STRINGS.editPanel.scopeDept}</dd>
         <dt>{STRINGS.editPanel.parent}</dt>
         <dd>{parentView ? parentView.name : STRINGS.common.noneFirstLevel}</dd>
-      </dl>
+      </Meta>
 
-      <div className="edit-panel__field">
+      <FieldGroup>
         <label htmlFor="field-name">{STRINGS.editPanel.name}</label>
         <input
           id="field-name"
@@ -79,9 +94,9 @@ export function EditPanel({
           disabled={!editableBasic}
           onChange={(e) => setDraftName(e.target.value)}
         />
-      </div>
+      </FieldGroup>
 
-      <div className="edit-panel__field">
+      <FieldGroup>
         <label htmlFor="field-subtitle">{STRINGS.editPanel.subtitle}</label>
         <input
           id="field-subtitle"
@@ -90,9 +105,9 @@ export function EditPanel({
           disabled={!editableBasic}
           onChange={(e) => setDraftSubtitle(e.target.value)}
         />
-      </div>
+      </FieldGroup>
 
-      <div className="edit-panel__field">
+      <FieldGroup>
         <label htmlFor="field-assignee">{STRINGS.editPanel.assignee}</label>
         <input
           id="field-assignee"
@@ -101,12 +116,12 @@ export function EditPanel({
           disabled={!editableBasic}
           onChange={(e) => setDraftAssignee(e.target.value)}
         />
-      </div>
+      </FieldGroup>
 
       {editableBasic ? (
-        <button
+        <SaveButton
           type="button"
-          className="button button--primary edit-panel__save-btn"
+          $variant="primary"
           disabled={!dirtyBasic || draftName.trim() === ''}
           onClick={() =>
             onUpdateNode({
@@ -117,30 +132,30 @@ export function EditPanel({
           }
         >
           {STRINGS.editPanel.saveBasic}
-        </button>
+        </SaveButton>
       ) : (
-        <p className="edit-panel__readonly-note">{STRINGS.editPanel.readonlyCommonNote}</p>
+        <ReadonlyNote>{STRINGS.editPanel.readonlyCommonNote}</ReadonlyNote>
       )}
 
-      <div className="edit-panel__field">
+      <FieldGroup>
         <label>{STRINGS.editPanel.weightFromParent}</label>
-        <div className="edit-panel__weight-row">
-          <span className="edit-panel__weight-value">
+        <WeightRow>
+          <WeightValue>
             {selected.weightFromParent !== null ? `${(selected.weightFromParent * 100).toFixed(1)}%` : STRINGS.common.noneFirstLevel}
-          </span>
+          </WeightValue>
           {selected.parentNodeId && (
-            <button type="button" className="button button--secondary button--small" onClick={() => onOpenWeightEditor(selected.parentNodeId!)}>
+            <Button type="button" $variant="secondary" $small onClick={() => onOpenWeightEditor(selected.parentNodeId!)}>
               <Scale3d size={13} />
               {STRINGS.editPanel.openWeightEditor}
-            </button>
+            </Button>
           )}
-        </div>
-      </div>
+        </WeightRow>
+      </FieldGroup>
 
-      <div className="edit-panel__field">
+      <FieldGroup>
         <label htmlFor="field-progress">{STRINGS.editPanel.outcomeProgress}</label>
         {selected.isLeaf ? (
-          <div className="edit-panel__progress-editor">
+          <ProgressEditor>
             <input
               id="field-progress"
               type="range"
@@ -149,7 +164,7 @@ export function EditPanel({
               value={Math.round(selected.outcomeProgress * 100)}
               onChange={(e) => onUpdateProgress(Number(e.target.value))}
             />
-            <div className="edit-panel__progress-number-row">
+            <ProgressNumberRow>
               <input
                 type="number"
                 min={0}
@@ -161,17 +176,17 @@ export function EditPanel({
                 }}
               />
               <span>%</span>
-            </div>
-          </div>
+            </ProgressNumberRow>
+          </ProgressEditor>
         ) : (
-          <div className="edit-panel__computed-value">
-            {Math.round(selected.outcomeProgress * 100)}% <span className="tag tag--muted">{STRINGS.editPanel.computedTag}</span>
-          </div>
+          <ComputedValue>
+            {Math.round(selected.outcomeProgress * 100)}% <Tag>{STRINGS.editPanel.computedTag}</Tag>
+          </ComputedValue>
         )}
-      </div>
+      </FieldGroup>
 
       {selected.level === 1 && (
-        <div className="edit-panel__field">
+        <FieldGroup>
           <label htmlFor="field-area">{STRINGS.editPanel.areaLabel(fiscalYear)}</label>
           <input
             id="field-area"
@@ -185,16 +200,16 @@ export function EditPanel({
               if (draftArea.trim() !== '' && !Number.isNaN(v)) onUpdateArea(v);
             }}
           />
-          {selected.area === null && <p className="edit-panel__readonly-note">{STRINGS.editPanel.areaMissing(fiscalYear)}</p>}
-        </div>
+          {selected.area === null && <ReadonlyNote>{STRINGS.editPanel.areaMissing(fiscalYear)}</ReadonlyNote>}
+        </FieldGroup>
       )}
 
       {selected.isLeaf && (
-        <button type="button" className="button button--danger edit-panel__detach-btn" onClick={() => onDetach(selected.node_id)}>
+        <DetachButton type="button" $variant="danger" onClick={() => onDetach(selected.node_id)}>
           <Unlink size={14} />
           {STRINGS.editPanel.detach}
-        </button>
+        </DetachButton>
       )}
-    </aside>
+    </EditPanelAside>
   );
 }

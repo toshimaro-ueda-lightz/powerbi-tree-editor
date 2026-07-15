@@ -1,5 +1,18 @@
 import { Crosshair, Maximize, Search } from 'lucide-react';
 import { STRINGS } from '../strings';
+import { Button, Hint } from './ui';
+import {
+  Actions,
+  Label,
+  Legend,
+  LegendItem,
+  LegendSwatch,
+  LegendTitle,
+  SearchBox,
+  SearchIcon,
+  Section,
+  SidebarAside,
+} from './Sidebar.styled';
 
 interface SidebarProps {
   searchTerm: string;
@@ -29,13 +42,13 @@ export function Sidebar({
   matchCount,
 }: SidebarProps) {
   return (
-    <aside className="sidebar">
-      <div className="sidebar__section">
-        <label className="sidebar__label" htmlFor="search-input">
-          {STRINGS.sidebar.searchLabel}
-        </label>
-        <div className="sidebar__search-box">
-          <Search size={14} className="sidebar__search-icon" aria-hidden />
+    <SidebarAside>
+      <Section>
+        <Label htmlFor="search-input">{STRINGS.sidebar.searchLabel}</Label>
+        <SearchBox>
+          <SearchIcon>
+            <Search size={14} aria-hidden />
+          </SearchIcon>
           <input
             id="search-input"
             type="text"
@@ -43,14 +56,12 @@ export function Sidebar({
             value={searchTerm}
             onChange={(e) => onChangeSearch(e.target.value)}
           />
-        </div>
-        {searchTerm && <div className="sidebar__hint">{STRINGS.sidebar.hitCount(matchCount ?? 0)}</div>}
-      </div>
+        </SearchBox>
+        {searchTerm && <Hint>{STRINGS.sidebar.hitCount(matchCount ?? 0)}</Hint>}
+      </Section>
 
-      <div className="sidebar__section">
-        <label className="sidebar__label" htmlFor="level-filter">
-          {STRINGS.sidebar.levelFilterLabel}
-        </label>
+      <Section>
+        <Label htmlFor="level-filter">{STRINGS.sidebar.levelFilterLabel}</Label>
         <select id="level-filter" value={maxLevel} onChange={(e) => onChangeMaxLevel(Number(e.target.value))}>
           <option value={6}>{STRINGS.sidebar.levelOptions.all}</option>
           <option value={5}>{STRINGS.sidebar.levelOptions.upTo5}</option>
@@ -59,12 +70,10 @@ export function Sidebar({
           <option value={2}>{STRINGS.sidebar.levelOptions.upTo2}</option>
           <option value={1}>{STRINGS.sidebar.levelOptions.upTo1}</option>
         </select>
-      </div>
+      </Section>
 
-      <div className="sidebar__section">
-        <label className="sidebar__label" htmlFor="assignee-filter">
-          {STRINGS.sidebar.assigneeFilterLabel}
-        </label>
+      <Section>
+        <Label htmlFor="assignee-filter">{STRINGS.sidebar.assigneeFilterLabel}</Label>
         <select id="assignee-filter" value={assigneeFilter} onChange={(e) => onChangeAssigneeFilter(e.target.value)}>
           <option value="">{STRINGS.sidebar.assigneeAll}</option>
           {assigneeOptions.map((a) => (
@@ -73,31 +82,31 @@ export function Sidebar({
             </option>
           ))}
         </select>
-      </div>
+      </Section>
 
-      <div className="sidebar__section sidebar__actions">
-        <button type="button" className="button button--secondary" onClick={onFitView}>
+      <Actions>
+        <Button type="button" $variant="secondary" onClick={onFitView}>
           <Maximize size={14} />
           {STRINGS.sidebar.fitView}
-        </button>
-        <button type="button" className="button button--secondary" onClick={onFocusSelected} disabled={!hasSelection}>
+        </Button>
+        <Button type="button" $variant="secondary" onClick={onFocusSelected} disabled={!hasSelection}>
           <Crosshair size={14} />
           {STRINGS.sidebar.focusSelected}
-        </button>
-      </div>
+        </Button>
+      </Actions>
 
-      <div className="sidebar__legend">
-        <div className="sidebar__legend-title">{STRINGS.sidebar.legendTitle}</div>
-        <div className="sidebar__legend-item">
-          <span className="legend-swatch legend-swatch--common" /> {STRINGS.sidebar.legendCommon}
-        </div>
-        <div className="sidebar__legend-item">
-          <span className="legend-swatch legend-swatch--dept" /> {STRINGS.sidebar.legendDept}
-        </div>
-        <div className="sidebar__legend-item">
-          <span className="legend-swatch legend-swatch--path" /> {STRINGS.sidebar.legendPath}
-        </div>
-      </div>
-    </aside>
+      <Legend>
+        <LegendTitle>{STRINGS.sidebar.legendTitle}</LegendTitle>
+        <LegendItem>
+          <LegendSwatch $variant="common" /> {STRINGS.sidebar.legendCommon}
+        </LegendItem>
+        <LegendItem>
+          <LegendSwatch $variant="dept" /> {STRINGS.sidebar.legendDept}
+        </LegendItem>
+        <LegendItem>
+          <LegendSwatch $variant="path" /> {STRINGS.sidebar.legendPath}
+        </LegendItem>
+      </Legend>
+    </SidebarAside>
   );
 }

@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import type { TreeSnapshot } from '../mock/types';
 import { STRINGS } from '../strings';
+import { TreeCanvasEmpty } from '../App.styled';
 import { TreeNodeCard } from './TreeNodeCard';
 import { computeLayout, toFlowElements } from './layout';
 import type { TreeNodeCardData } from './types';
@@ -194,9 +195,9 @@ function TreeCanvasInner({
 
   if (Object.keys(tree.nodesById).length === 0) {
     return (
-      <div className="tree-canvas-empty">
+      <TreeCanvasEmpty>
         <p>{STRINGS.treeCanvas.empty}</p>
-      </div>
+      </TreeCanvasEmpty>
     );
   }
 
