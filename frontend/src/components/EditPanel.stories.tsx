@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { EditPanel } from './EditPanel';
-import { CURRENT_FISCAL_YEAR } from '../mock/seedData';
+import { CURRENT_FISCAL_YEAR } from '../config';
 import { storyChildNode, storyLeafNode, storyRootNode } from '../mock/storyFixtures';
 
 const meta = {

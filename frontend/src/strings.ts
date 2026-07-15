@@ -28,9 +28,11 @@ export const STRINGS = {
     fiscalYearValue: (year: number) => `${year}年度`,
     dirty: '未保存の変更があります',
     clean: '保存済み',
-    resetConfirm: 'モックデータを初期状態にリセットします。よろしいですか？（保存前の変更は失われます）',
-    resetButton: 'モックデータ初期化',
-    saveButton: '保存',
+    saving: '保存中...',
+    saveFailed: '保存に失敗しました',
+    discardConfirm: 'ここまでの変更を破棄し、保存済みの状態に戻します。よろしいですか？',
+    discardButton: '変更を破棄',
+    saveButton: '変更をSQLiteへ保存',
   },
 
   sidebar: {
@@ -68,6 +70,7 @@ export const STRINGS = {
       6: '第6階層',
     } as Record<number, string>,
     nodeCode: 'ノードコード',
+    nodeCodePending: '保存後に採番されます',
     level: '階層',
     scope: '区分',
     scopeCommon: '共通施策',
@@ -137,6 +140,8 @@ export const STRINGS = {
     addChildRejectedProgress:
       '成果進捗が入力済み（0%超）のため子施策を追加できません。成果進捗を0%にして保存してから追加してください（確認なしで操作を拒否しています）。',
     emptyTree: 'この部署・年度で表示できる施策がありません。',
+    loadingTree: '読み込み中...',
+    loadingDepartments: '部署一覧を読み込み中...',
     internalNoParent: '内部エラー: 親施策が未指定です。',
   },
 
@@ -164,5 +169,8 @@ export const STRINGS = {
     progressRange: '成果進捗は0〜100%の範囲で入力してください。',
     areaFirstLevelOnly: '可能面積を編集できるのは第1階層の施策のみです。',
     areaRange: '面積は0以上の数値で入力してください。',
+    departmentNotFound: '対象の部署が見つかりません。',
+    networkError: 'サーバーに接続できませんでした。API サーバーが起動しているか確認してください。',
+    unknown: '不明なエラーが発生しました。',
   },
 } as const;

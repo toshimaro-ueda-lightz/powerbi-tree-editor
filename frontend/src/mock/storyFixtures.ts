@@ -2,8 +2,7 @@
 // stories should not depend on `mockService`'s localStorage-backed state, so
 // these are small hand-written `TreeNodeView` / `DepartmentRecord` fixtures
 // kept separate from `seedData.ts` (which seeds the real mock store).
-import type { DepartmentRecord } from '../domain/types';
-import type { TreeNodeView } from './types';
+import type { DepartmentRecord, TreeNodeView } from '@powerbi-tree-editor/domain';
 
 export const storyDepartments: DepartmentRecord[] = [
   { department_id: 'dept-sales', name: '営業部' },

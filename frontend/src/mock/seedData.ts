@@ -12,14 +12,12 @@
 // - first_level_area differs both by department and by fiscal year
 // - outcome_progress differs across leaves/departments
 
-import type { DataStore } from '../domain/types';
+import type { DataStore } from '@powerbi-tree-editor/domain';
+import { CURRENT_FISCAL_YEAR } from '../config';
 
-const FY_CURRENT = 2026;
-const FY_PREVIOUS = 2025;
+const FY_CURRENT = CURRENT_FISCAL_YEAR;
+const FY_PREVIOUS = FY_CURRENT - 1;
 const AS_OF = '2026-07-01';
-
-export const FISCAL_YEARS = [FY_PREVIOUS, FY_CURRENT, 2027] as const;
-export const CURRENT_FISCAL_YEAR = FY_CURRENT;
 
 export function buildSeed(): DataStore {
   return {

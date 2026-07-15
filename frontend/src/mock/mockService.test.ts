@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { DataStore } from '../domain/types';
+import type { DataStore } from '@powerbi-tree-editor/domain';
 import * as mockService from './mockService';
 
 function fixture(): DataStore {

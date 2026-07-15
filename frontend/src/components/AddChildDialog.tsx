@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AddChildResult, TreeNodeView } from '../mock/types';
+import type { AddChildResult, TreeNodeView } from '../types';
 import { STRINGS } from '../strings';
 import { Modal } from './Modal';
 import { Actions as ModalActions, Description } from './Modal.styled';
@@ -8,7 +8,7 @@ import { Banner, Button, FieldGroup, Hint } from './ui';
 interface AddChildDialogProps {
   parentView: TreeNodeView;
   suggestedWeightPct: number;
-  onSubmit: (input: { name: string; subtitle?: string | null; assignee?: string | null; weight: number }) => AddChildResult;
+  onSubmit: (input: { name: string; subtitle?: string | null; assignee?: string | null; weight: number }) => Promise<AddChildResult>;
   onClose: () => void;
 }
 
@@ -61,9 +61,9 @@ export function AddChildDialog({ parentView, suggestedWeightPct, onSubmit, onClo
           type="button"
           $variant="primary"
           disabled={name.trim() === ''}
-          onClick={() => {
+          onClick={async () => {
             const weight = Number(weightPct) / 100;
-            const result = onSubmit({
+            const result = await onSubmit({
               name: name.trim(),
               subtitle: subtitle.trim() === '' ? null : subtitle.trim(),
               assignee: assignee.trim() === '' ? null : assignee.trim(),

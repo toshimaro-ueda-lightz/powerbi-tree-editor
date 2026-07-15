@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react';
-import type { TreeNodeView } from '../mock/types';
+import type { TreeNodeView } from '../types';
 
 export interface TreeNodeCardData extends Record<string, unknown> {
   view: TreeNodeView;

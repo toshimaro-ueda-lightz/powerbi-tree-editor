@@ -11,7 +11,7 @@ import {
   type NodeTypes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { TreeSnapshot } from '../mock/types';
+import type { TreeSnapshot } from '../types';
 import { STRINGS } from '../strings';
 import { TreeCanvasEmpty } from '../App.styled';
 import { TreeNodeCard } from './TreeNodeCard';

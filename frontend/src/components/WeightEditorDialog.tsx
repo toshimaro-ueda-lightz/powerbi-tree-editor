@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import type { TreeNodeView } from '../mock/types';
-import type { OperationResult } from '../mock/types';
+import type { OperationResult, TreeNodeView } from '../types';
 import { STRINGS } from '../strings';
 import { Modal } from './Modal';
 import { Actions as ModalActions, Description } from './Modal.styled';
@@ -10,7 +9,7 @@ import { WeightSum, WeightTable } from './WeightEditorDialog.styled';
 interface WeightEditorDialogProps {
   parentView: TreeNodeView;
   siblings: TreeNodeView[];
-  onSubmit: (items: { childNodeId: string; weight: number }[]) => OperationResult;
+  onSubmit: (items: { childNodeId: string; weight: number }[]) => Promise<OperationResult>;
   onClose: () => void;
 }
 
@@ -71,9 +70,9 @@ export function WeightEditorDialog({ parentView, siblings, onSubmit, onClose }: 
           type="button"
           $variant="primary"
           disabled={!isValid}
-          onClick={() => {
+          onClick={async () => {
             const items = siblings.map((s) => ({ childNodeId: s.node_id, weight: Number(drafts[s.node_id]) / 100 }));
-            const result = onSubmit(items);
+            const result = await onSubmit(items);
             if (result.ok) {
               onClose();
             } else {

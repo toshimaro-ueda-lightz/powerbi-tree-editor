@@ -1,7 +1,8 @@
-import { ChevronLeft, ChevronRight, RotateCcw, Save } from 'lucide-react';
-import type { DepartmentRecord } from '../domain/types';
+import { ChevronLeft, ChevronRight, Save, Undo2 } from 'lucide-react';
+import type { DepartmentRecord } from '@powerbi-tree-editor/domain';
 import { STRINGS } from '../strings';
-import { CURRENT_FISCAL_YEAR } from '../mock/seedData';
+import { CURRENT_FISCAL_YEAR } from '../config';
+import type { SaveStatus } from '../types';
 import { Button, IconButton } from './ui';
 import { Brand, DirtyIndicator, Field, FiscalYearField, FiscalYearValue, HeaderBar, Spacer } from './Header.styled';
 
@@ -12,8 +13,9 @@ interface HeaderProps {
   fiscalYear: number;
   onChangeFiscalYear: (year: number) => void;
   isDirty: boolean;
+  saveStatus: SaveStatus;
   onSave: () => void;
-  onReset: () => void;
+  onDiscard: () => void;
 }
 
 export function Header({
@@ -23,10 +25,20 @@ export function Header({
   fiscalYear,
   onChangeFiscalYear,
   isDirty,
+  saveStatus,
   onSave,
-  onReset,
+  onDiscard,
 }: HeaderProps) {
   const nextYearDisabled = fiscalYear >= CURRENT_FISCAL_YEAR;
+  const busy = saveStatus === 'saving';
+  const statusLabel =
+    saveStatus === 'saving'
+      ? STRINGS.header.saving
+      : saveStatus === 'error'
+        ? STRINGS.header.saveFailed
+        : isDirty
+          ? STRINGS.header.dirty
+          : STRINGS.header.clean;
 
   return (
     <HeaderBar>
@@ -66,22 +78,25 @@ export function Header({
 
       <Spacer />
 
-      <DirtyIndicator $dirty={isDirty}>{isDirty ? STRINGS.header.dirty : STRINGS.header.clean}</DirtyIndicator>
+      <DirtyIndicator $dirty={isDirty || saveStatus === 'error'} $saving={busy}>
+        {statusLabel}
+      </DirtyIndicator>
 
       <Button
         type="button"
         $variant="ghost"
+        disabled={!isDirty || busy}
         onClick={() => {
-          if (window.confirm(STRINGS.header.resetConfirm)) {
-            onReset();
+          if (window.confirm(STRINGS.header.discardConfirm)) {
+            onDiscard();
           }
         }}
       >
-        <RotateCcw size={14} />
-        {STRINGS.header.resetButton}
+        <Undo2 size={14} />
+        {STRINGS.header.discardButton}
       </Button>
 
-      <Button type="button" $variant="primary" onClick={onSave} disabled={!isDirty}>
+      <Button type="button" $variant="primary" onClick={onSave} disabled={!isDirty || busy}>
         <Save size={14} />
         {STRINGS.header.saveButton}
       </Button>

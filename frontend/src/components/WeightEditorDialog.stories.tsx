@@ -15,7 +15,7 @@ export const ValidSum: Story = {
   args: {
     parentView: storyChildNode,
     siblings: storySiblings,
-    onSubmit: () => ({ ok: true }),
+    onSubmit: async () => ({ ok: true }),
     onClose: () => {},
   },
 };

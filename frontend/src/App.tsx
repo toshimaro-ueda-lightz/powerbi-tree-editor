@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
+import type { DepartmentRecord } from '@powerbi-tree-editor/domain';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditPanel } from './components/EditPanel';
@@ -8,29 +9,41 @@ import { WeightEditorDialog } from './components/WeightEditorDialog';
 import { IconButton } from './components/ui';
 import { AppShell, AppBody, AppMain, TreeCanvasEmpty, FloatingBanner } from './App.styled';
 import { TreeCanvas, type TreeCanvasHandle } from './tree/TreeCanvas';
-import { useMockVersion } from './hooks/useMockVersion';
+import { useApiVersion } from './hooks/useApiVersion';
 import { STRINGS } from './strings';
-import { CURRENT_FISCAL_YEAR } from './mock/seedData';
+import { CURRENT_FISCAL_YEAR } from './config';
+import type { SaveStatus, TreeSnapshot } from './types';
 import {
   addChildNode,
   detachNode,
+  discard,
+  getTree,
   isDirty,
   listDepartments,
-  resetMockData,
   save,
   updateFirstLevelArea,
   updateNode,
   updateProgress,
   updateWeights,
-  getTree,
-} from './mock/mockService';
+} from './api/apiService';
+
+const EMPTY_TREE = (departmentId: string, fiscalYear: number): TreeSnapshot => ({
+  departmentId,
+  fiscalYear,
+  nodesById: {},
+  rootIds: [],
+  kpiTarget: null,
+});
 
 function App() {
-  const storeVersion = useMockVersion(); // re-render on any mock store mutation
+  const apiVersion = useApiVersion(); // re-render whenever the api service's session state changes
 
-  const departments = listDepartments();
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState(departments[0]?.department_id ?? '');
+  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [departmentsLoaded, setDepartmentsLoaded] = useState(false);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [fiscalYear, setFiscalYear] = useState(CURRENT_FISCAL_YEAR);
+  const [tree, setTree] = useState<TreeSnapshot | null>(null);
+  const [treeLoading, setTreeLoading] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [maxLevel, setMaxLevel] = useState(6);
@@ -39,31 +52,59 @@ function App() {
   const [weightEditorParentId, setWeightEditorParentId] = useState<string | null>(null);
   const [canvasBanner, setCanvasBanner] = useState<string | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
 
   const treeCanvasRef = useRef<TreeCanvasHandle>(null);
 
-  const tree = useMemo(
-    () => getTree(selectedDepartmentId, fiscalYear),
+  // Load the department list once on mount.
+  useEffect(() => {
+    let alive = true;
+    listDepartments().then((depts) => {
+      if (!alive) return;
+      setDepartments(depts);
+      setDepartmentsLoaded(true);
+      setSelectedDepartmentId((prev) => prev || depts[0]?.department_id || '');
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // (Re)fetch the tree whenever the selected department/year changes, or the
+  // api service reports a mutation/save/discard (apiVersion bump).
+  useEffect(() => {
+    if (!selectedDepartmentId) return;
+    let alive = true;
+    setTreeLoading(true);
+    getTree(selectedDepartmentId, fiscalYear).then((snapshot) => {
+      if (!alive) return;
+      setTree(snapshot);
+      setTreeLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedDepartmentId, fiscalYear, storeVersion],
-  );
+  }, [selectedDepartmentId, fiscalYear, apiVersion]);
+
+  const effectiveTree = tree ?? EMPTY_TREE(selectedDepartmentId, fiscalYear);
 
   const assigneeOptions = useMemo(() => {
     const set = new Set<string>();
-    for (const v of Object.values(tree.nodesById)) {
+    for (const v of Object.values(effectiveTree.nodesById)) {
       if (v.assignee) set.add(v.assignee);
     }
     return [...set].sort((a, b) => a.localeCompare(b, 'ja'));
-  }, [tree]);
+  }, [effectiveTree]);
 
   const matchCount = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return null;
-    return Object.values(tree.nodesById).filter((v) => v.name.toLowerCase().includes(q)).length;
-  }, [tree, searchTerm]);
+    return Object.values(effectiveTree.nodesById).filter((v) => v.name.toLowerCase().includes(q)).length;
+  }, [effectiveTree, searchTerm]);
 
-  const selectedView = selectedNodeId ? tree.nodesById[selectedNodeId] ?? null : null;
-  const parentView = selectedView?.parentNodeId ? tree.nodesById[selectedView.parentNodeId] ?? null : null;
+  const selectedView = selectedNodeId ? effectiveTree.nodesById[selectedNodeId] ?? null : null;
+  const parentView = selectedView?.parentNodeId ? effectiveTree.nodesById[selectedView.parentNodeId] ?? null : null;
 
   function handleSelectNode(id: string) {
     setSelectedNodeId(id === '' ? null : id);
@@ -83,7 +124,7 @@ function App() {
   }
 
   function handleRequestAddChild(parentNodeId: string) {
-    const parent = tree.nodesById[parentNodeId];
+    const parent = effectiveTree.nodesById[parentNodeId];
     if (!parent) return;
     if (parent.isLeaf && parent.outcomeProgress > 0) {
       setCanvasBanner(STRINGS.app.addChildRejectedProgress);
@@ -93,22 +134,22 @@ function App() {
     setAddChildParentId(parentNodeId);
   }
 
-  function handleAddChildSubmit(input: { name: string; subtitle?: string | null; assignee?: string | null; weight: number }) {
+  async function handleAddChildSubmit(input: { name: string; subtitle?: string | null; assignee?: string | null; weight: number }) {
     if (!addChildParentId) return { ok: false as const, reason: STRINGS.app.internalNoParent };
-    const result = addChildNode(selectedDepartmentId, addChildParentId, input);
+    const result = await addChildNode(selectedDepartmentId, addChildParentId, input);
     if (result.ok) setSelectedNodeId(result.nodeId);
     return result;
   }
 
   function suggestedWeightPct(parentNodeId: string): number {
-    const parent = tree.nodesById[parentNodeId];
+    const parent = effectiveTree.nodesById[parentNodeId];
     if (!parent) return 100;
-    const usedPct = parent.childNodeIds.reduce((sum, id) => sum + (tree.nodesById[id]?.weightFromParent ?? 0) * 100, 0);
+    const usedPct = parent.childNodeIds.reduce((sum, id) => sum + (effectiveTree.nodesById[id]?.weightFromParent ?? 0) * 100, 0);
     return Math.max(0, Math.min(100, 100 - usedPct));
   }
 
-  function handleDetach(nodeId: string) {
-    const result = detachNode(selectedDepartmentId, nodeId);
+  async function handleDetach(nodeId: string) {
+    const result = await detachNode(selectedDepartmentId, nodeId);
     if (!result.ok) {
       setCanvasBanner(result.reason);
       if (selectedNodeId === nodeId) setPanelError(result.reason);
@@ -121,21 +162,21 @@ function App() {
     }
   }
 
-  function handleUpdateNode(patch: { name?: string; subtitle?: string | null; assignee?: string | null }) {
+  async function handleUpdateNode(patch: { name?: string; subtitle?: string | null; assignee?: string | null }) {
     if (!selectedNodeId) return;
-    const result = updateNode(selectedDepartmentId, selectedNodeId, patch);
+    const result = await updateNode(selectedDepartmentId, selectedNodeId, patch);
     setPanelError(result.ok ? null : result.reason);
   }
 
-  function handleUpdateProgress(pct: number) {
+  async function handleUpdateProgress(pct: number) {
     if (!selectedNodeId) return;
-    const result = updateProgress(selectedDepartmentId, selectedNodeId, pct / 100);
+    const result = await updateProgress(selectedDepartmentId, selectedNodeId, pct / 100);
     setPanelError(result.ok ? null : result.reason);
   }
 
-  function handleUpdateArea(value: number) {
+  async function handleUpdateArea(value: number) {
     if (!selectedNodeId) return;
-    const result = updateFirstLevelArea(selectedDepartmentId, fiscalYear, selectedNodeId, value);
+    const result = await updateFirstLevelArea(selectedDepartmentId, fiscalYear, selectedNodeId, value);
     setPanelError(result.ok ? null : result.reason);
   }
 
@@ -143,24 +184,42 @@ function App() {
     setWeightEditorParentId(parentNodeId);
   }
 
-  function handleWeightSubmit(items: { childNodeId: string; weight: number }[]) {
+  async function handleWeightSubmit(items: { childNodeId: string; weight: number }[]) {
     if (!weightEditorParentId) return { ok: false as const, reason: STRINGS.app.internalNoParent };
     return updateWeights(selectedDepartmentId, weightEditorParentId, items);
   }
 
-  function handleSave() {
-    save();
+  async function handleSave() {
+    setSaveStatus('saving');
+    try {
+      const idMap = await save();
+      // Nodes added during the session were keyed by placeholder ids; the save
+      // just assigned their real ones. Re-key every piece of state that can
+      // still hold a placeholder, or the tree re-fetch (keyed by real ids)
+      // would leave them pointing at nothing — e.g. the node you just added
+      // would silently deselect itself (画面設計書 §11.2 手順7 requires it
+      // stay selected). Unmapped ids keep their current value: an id that
+      // isn't in the map is a pre-existing real id and is already correct.
+      const remap = (id: string | null): string | null => (id === null ? null : idMap[id] ?? id);
+      setSelectedNodeId(remap);
+      setAddChildParentId(remap);
+      setWeightEditorParentId(remap);
+      setSaveStatus('idle');
+    } catch {
+      setSaveStatus('error');
+    }
   }
 
-  function handleReset() {
-    resetMockData();
+  async function handleDiscard() {
+    await discard();
+    setSaveStatus('idle');
     setSelectedNodeId(null);
     setPanelError(null);
     setCanvasBanner(null);
   }
 
-  const weightEditorParent = weightEditorParentId ? tree.nodesById[weightEditorParentId] : null;
-  const addChildParent = addChildParentId ? tree.nodesById[addChildParentId] : null;
+  const weightEditorParent = weightEditorParentId ? effectiveTree.nodesById[weightEditorParentId] : null;
+  const addChildParent = addChildParentId ? effectiveTree.nodesById[addChildParentId] : null;
 
   return (
     <AppShell>
@@ -171,8 +230,9 @@ function App() {
         fiscalYear={fiscalYear}
         onChangeFiscalYear={handleChangeFiscalYear}
         isDirty={isDirty()}
+        saveStatus={saveStatus}
         onSave={handleSave}
-        onReset={handleReset}
+        onDiscard={handleDiscard}
       />
       <AppBody>
         <Sidebar
@@ -197,14 +257,18 @@ function App() {
               </IconButton>
             </FloatingBanner>
           )}
-          {Object.keys(tree.nodesById).length === 0 ? (
+          {!departmentsLoaded || treeLoading ? (
+            <TreeCanvasEmpty>
+              <p>{!departmentsLoaded ? STRINGS.app.loadingDepartments : STRINGS.app.loadingTree}</p>
+            </TreeCanvasEmpty>
+          ) : Object.keys(effectiveTree.nodesById).length === 0 ? (
             <TreeCanvasEmpty>
               <p>{STRINGS.app.emptyTree}</p>
             </TreeCanvasEmpty>
           ) : (
             <TreeCanvas
               ref={treeCanvasRef}
-              tree={tree}
+              tree={effectiveTree}
               selectedNodeId={selectedNodeId}
               onSelectNode={handleSelectNode}
               onRequestAddChild={handleRequestAddChild}
@@ -240,7 +304,7 @@ function App() {
       {weightEditorParent && (
         <WeightEditorDialog
           parentView={weightEditorParent}
-          siblings={weightEditorParent.childNodeIds.map((id) => tree.nodesById[id]).filter((v): v is NonNullable<typeof v> => Boolean(v))}
+          siblings={weightEditorParent.childNodeIds.map((id) => effectiveTree.nodesById[id]).filter((v): v is NonNullable<typeof v> => Boolean(v))}
           onSubmit={handleWeightSubmit}
           onClose={() => setWeightEditorParentId(null)}
         />
