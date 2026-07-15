@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -15,8 +15,10 @@ import type { TreeSnapshot } from '../types';
 import { STRINGS } from '../strings';
 import { TreeCanvasEmpty } from '../App.styled';
 import { TreeNodeCard } from './TreeNodeCard';
-import { computeLayout, toFlowElements } from './layout';
-import type { TreeNodeCardData } from './types';
+import { ColumnHeaders } from './ColumnHeaders';
+import { computeColumnPositions, computeLayout, toFlowElements } from './layout';
+import { NODE_HEIGHT, NODE_WIDTH, type TreeNodeCardData } from './types';
+import { ReactFlowViewport, TreeCanvasRoot } from './TreeCanvas.styled';
 
 const nodeTypes: NodeTypes = { treeNode: TreeNodeCard };
 
@@ -59,7 +61,13 @@ function TreeCanvasInner({
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [flowNodes, setFlowNodes] = useState<Node<TreeNodeCardData>[]>([]);
   const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
+  const [columnPositions, setColumnPositions] = useState<Map<number, number>>(new Map());
   const rf = useReactFlow();
+  // Tracks the `departmentId:fiscalYear` key we still owe an initial
+  // center-on-level-3 for (§4.3). Set whenever department/year changes,
+  // consumed the first time flowNodes for that key are ready — so
+  // collapsing/filtering/selecting afterwards never re-triggers it (B.1/B.2).
+  const pendingCenterKeyRef = useRef<string | null>(`${tree.departmentId}:${tree.fiscalYear}`);
 
   const toggleCollapse = (nodeId: string) => {
     setCollapsedIds((prev) => {
@@ -139,7 +147,7 @@ function TreeCanvasInner({
     });
 
     computeLayout({
-      nodeIds: visibleIds,
+      nodes: visibleIds.map((id) => ({ id, level: tree.nodesById[id]!.level })),
       edges: edgeDefs.map((e) => ({ id: e.id, source: e.source, target: e.target })),
     }).then(({ positions }) => {
       if (cancelled) return;
@@ -167,6 +175,11 @@ function TreeCanvasInner({
       );
       setFlowNodes(nodes);
       setFlowEdges(edges);
+      setColumnPositions(
+        computeColumnPositions(
+          visibleIds.map((id) => ({ level: tree.nodesById[id]!.level, x: positions.get(id)?.x ?? 0 })),
+        ),
+      );
     });
 
     return () => {
@@ -176,22 +189,49 @@ function TreeCanvasInner({
   }, [visibleIds.join(','), tree, selectedNodeId, collapsedIds, filterActive]);
 
   useImperativeHandle(forwardedRef, () => ({
+    // Full-tree fit — kept for the sidebar's explicit "全体表示" button only.
+    // Everything else (initial display, department/year switch, "選択ノードへ
+    // 移動") zooms to a single node/column instead (issue #10, B).
     fitView: () => rf.fitView({ padding: 0.2, duration: 300 }),
     focusNode: (nodeId: string) => {
       const node = flowNodes.find((n) => n.id === nodeId);
       if (!node) return;
-      rf.setCenter(node.position.x + 100, node.position.y + 50, { zoom: 1, duration: 400 });
+      rf.setCenter(node.position.x + NODE_WIDTH / 2, node.position.y + NODE_HEIGHT / 2, {
+        zoom: 1,
+        duration: 400,
+      });
     },
   }));
 
+  // Center on the selected node (if it's in this tree) or the first level-3
+  // node, at a readable zoom (§4.3: "初期表示は選択中の第3階層を中心に…"),
+  // exactly once per department/fiscal-year switch. `flowNodes` also changes
+  // on every collapse/filter/select (layout recompute), so a plain
+  // dependency-array effect would re-center on those too (issue #10, B.1) —
+  // `pendingCenterKeyRef` gates this to only the first flowNodes update after
+  // department/year actually changes.
   useEffect(() => {
-    if (flowNodes.length > 0) {
-      const t = setTimeout(() => rf.fitView({ padding: 0.2, duration: 0 }), 0);
-      return () => clearTimeout(t);
-    }
-    return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    pendingCenterKeyRef.current = `${tree.departmentId}:${tree.fiscalYear}`;
   }, [tree.departmentId, tree.fiscalYear]);
+
+  useEffect(() => {
+    const key = `${tree.departmentId}:${tree.fiscalYear}`;
+    if (flowNodes.length === 0 || pendingCenterKeyRef.current !== key) return undefined;
+    pendingCenterKeyRef.current = null;
+
+    const target =
+      (selectedNodeId && flowNodes.find((n) => n.id === selectedNodeId)) ||
+      flowNodes.find((n) => n.data.view.level === 3) ||
+      flowNodes[0];
+    const t = setTimeout(() => {
+      rf.setCenter(target.position.x + NODE_WIDTH / 2, target.position.y + NODE_HEIGHT / 2, {
+        zoom: 1,
+        duration: 0,
+      });
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flowNodes]);
 
   if (Object.keys(tree.nodesById).length === 0) {
     return (
@@ -202,20 +242,25 @@ function TreeCanvasInner({
   }
 
   return (
-    <ReactFlow
-      nodes={flowNodes}
-      edges={flowEdges}
-      nodeTypes={nodeTypes}
-      onNodeClick={(_, node) => onSelectNode(node.id)}
-      onPaneClick={() => onSelectNode('')}
-      nodesDraggable={false}
-      minZoom={0.2}
-      maxZoom={1.5}
-      proOptions={{ hideAttribution: true }}
-    >
-      <Background gap={20} size={1} color="var(--color-grid)" />
-      <Controls showInteractive={false} position="bottom-right" />
-      <MiniMap pannable zoomable position="bottom-left" nodeColor={() => 'var(--color-minimap-node)'} maskColor="rgba(15, 23, 42, 0.06)" />
-    </ReactFlow>
+    <TreeCanvasRoot>
+      <ColumnHeaders columnPositions={columnPositions} />
+      <ReactFlowViewport>
+        <ReactFlow
+          nodes={flowNodes}
+          edges={flowEdges}
+          nodeTypes={nodeTypes}
+          onNodeClick={(_, node) => onSelectNode(node.id)}
+          onPaneClick={() => onSelectNode('')}
+          nodesDraggable={false}
+          minZoom={0.2}
+          maxZoom={1.5}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background gap={20} size={1} color="var(--color-grid)" />
+          <Controls showInteractive={false} position="bottom-right" />
+          <MiniMap pannable zoomable position="bottom-left" nodeColor={() => 'var(--color-minimap-node)'} maskColor="rgba(15, 23, 42, 0.06)" />
+        </ReactFlow>
+      </ReactFlowViewport>
+    </TreeCanvasRoot>
   );
 }

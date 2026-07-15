@@ -6,8 +6,15 @@ import { NODE_HEIGHT, NODE_WIDTH } from './types';
 
 const elk = new ELK();
 
+export interface LayoutNodeInput {
+  id: string;
+  /** Business hierarchy level (第n階層). Determines the column (x) this node
+   * is pinned to — see `elk.partitioning.partition` below. */
+  level: number;
+}
+
 export interface LayoutInput {
-  nodeIds: string[];
+  nodes: LayoutNodeInput[];
   edges: { id: string; source: string; target: string }[];
 }
 
@@ -15,8 +22,8 @@ export interface LayoutResult {
   positions: Map<string, { x: number; y: number }>;
 }
 
-export async function computeLayout({ nodeIds, edges }: LayoutInput): Promise<LayoutResult> {
-  if (nodeIds.length === 0) return { positions: new Map() };
+export async function computeLayout({ nodes, edges }: LayoutInput): Promise<LayoutResult> {
+  if (nodes.length === 0) return { positions: new Map() };
 
   const graph = {
     id: 'root',
@@ -26,8 +33,23 @@ export async function computeLayout({ nodeIds, edges }: LayoutInput): Promise<La
       'elk.layered.spacing.nodeNodeBetweenLayers': '96',
       'elk.spacing.nodeNode': '28',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+      // Pin every node's column to its business hierarchy level instead of
+      // letting ELK infer a topological layer, and lay every root's subtree
+      // out in one shared coordinate space instead of packing each
+      // connected component (root) independently side by side. Without
+      // this, a forest with multiple level-1 roots (e.g. department D04 has
+      // 5) gets column x-positions that don't line up across roots — see
+      // issue #10. y (sibling stacking / parent-child closeness within a
+      // column) is still left to ELK.
+      'elk.partitioning.activate': 'true',
+      'elk.separateConnectedComponents': 'false',
     },
-    children: nodeIds.map((id) => ({ id, width: NODE_WIDTH, height: NODE_HEIGHT })),
+    children: nodes.map((n) => ({
+      id: n.id,
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+      layoutOptions: { 'elk.partitioning.partition': String(n.level) },
+    })),
     edges: edges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
   };
 
@@ -37,6 +59,28 @@ export async function computeLayout({ nodeIds, edges }: LayoutInput): Promise<La
     positions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
   }
   return { positions };
+}
+
+/**
+ * Derives the fixed column x-position for each business hierarchy level from
+ * already-computed node positions. Pure/sync so it's cheap to unit test
+ * independently of ELK: `computeLayout` guarantees every node at the same
+ * level shares one x (see `elk.partitioning.partition` above), so the first
+ * position seen for a level is that level's column.
+ *
+ * Only levels that actually have at least one node in `nodes` are returned —
+ * there is no x to anchor a column with zero visible nodes to (e.g. a
+ * department tree that doesn't reach level 6, or a level hidden by the
+ * level filter).
+ */
+export function computeColumnPositions(
+  nodes: { level: number; x: number }[],
+): Map<number, number> {
+  const byLevel = new Map<number, number>();
+  for (const n of nodes) {
+    if (!byLevel.has(n.level)) byLevel.set(n.level, n.x);
+  }
+  return byLevel;
 }
 
 export function toFlowElements<TData extends Record<string, unknown>>(
