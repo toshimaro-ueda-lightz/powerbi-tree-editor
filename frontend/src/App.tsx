@@ -192,7 +192,18 @@ function App() {
   async function handleSave() {
     setSaveStatus('saving');
     try {
-      await save();
+      const idMap = await save();
+      // Nodes added during the session were keyed by placeholder ids; the save
+      // just assigned their real ones. Re-key every piece of state that can
+      // still hold a placeholder, or the tree re-fetch (keyed by real ids)
+      // would leave them pointing at nothing — e.g. the node you just added
+      // would silently deselect itself (画面設計書 §11.2 手順7 requires it
+      // stay selected). Unmapped ids keep their current value: an id that
+      // isn't in the map is a pre-existing real id and is already correct.
+      const remap = (id: string | null): string | null => (id === null ? null : idMap[id] ?? id);
+      setSelectedNodeId(remap);
+      setAddChildParentId(remap);
+      setWeightEditorParentId(remap);
       setSaveStatus('idle');
     } catch {
       setSaveStatus('error');

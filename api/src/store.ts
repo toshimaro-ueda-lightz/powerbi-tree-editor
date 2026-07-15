@@ -14,6 +14,7 @@ import type {
   DataStore,
   DepartmentRecord,
   FirstLevelAreaRecord,
+  IdMap,
   KpiTargetRecord,
   NodeEdgeRecord,
   NodeRecord,
@@ -93,11 +94,6 @@ export type Command =
   | { type: 'updateArea'; departmentId: string; fiscalYear: number; nodeId: string; area: number }
   | { type: 'detach'; edgeId: string; validTo: string; renormalized: { edgeId: string; weight: number }[] };
 
-/** temp-prefixed ids are session-local placeholders for not-yet-persisted rows. */
-export function isTempId(id: string): boolean {
-  return id.startsWith('temp-');
-}
-
 function resolveId(map: Map<string, number>, id: string): number {
   const mapped = map.get(id);
   if (mapped !== undefined) return mapped;
@@ -112,8 +108,15 @@ function resolveId(map: Map<string, number>, id: string): number {
  * Applies every recorded command to the real database inside one
  * transaction (satisfies §10's requirement that a sibling-weight
  * renormalization and a node+edge insert each land atomically together).
+ *
+ * Returns the placeholder -> real id mapping for every row inserted during
+ * this replay. Callers (and ultimately the UI) need it because a session's
+ * new nodes/edges are referenced by `temp-` ids everywhere until save
+ * assigns the real AUTOINCREMENT ids — anything still holding a placeholder
+ * (e.g. the currently selected node) must be re-keyed or it silently
+ * dangles.
  */
-export function applyChangelog(db: Database.Database, changeLog: Command[]): void {
+export function applyChangelog(db: Database.Database, changeLog: Command[]): IdMap {
   const nodeIdMap = new Map<string, number>();
   const edgeIdMap = new Map<string, number>();
 
@@ -196,4 +199,9 @@ export function applyChangelog(db: Database.Database, changeLog: Command[]): voi
   });
 
   run(changeLog);
+
+  const idMap: IdMap = {};
+  for (const [tempId, realId] of nodeIdMap) idMap[tempId] = String(realId);
+  for (const [tempId, realId] of edgeIdMap) idMap[tempId] = String(realId);
+  return idMap;
 }

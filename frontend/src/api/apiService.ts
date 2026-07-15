@@ -8,6 +8,7 @@
 
 import type {
   DepartmentRecord,
+  IdMap,
   ServiceReasonCode,
   ServiceReasonParams,
 } from '@powerbi-tree-editor/domain';
@@ -226,7 +227,13 @@ export async function updateFirstLevelArea(
 
 // ---- session control -----------------------------------------------------------
 
-export async function save(): Promise<void> {
+/**
+ * Persists the server-side session. Returns the placeholder -> real id map
+ * for anything created during it: nodes added in this session were keyed by
+ * `temp-` ids, and the save assigns their real ids, so callers holding a
+ * placeholder (selected node, open dialogs) must re-key it or it dangles.
+ */
+export async function save(): Promise<IdMap> {
   const body = await call('POST', '/save');
   if (isRawFailure(body)) {
     touch();
@@ -234,6 +241,8 @@ export async function save(): Promise<void> {
   }
   dirty = false;
   touch();
+  const idMap = (body as { idMap?: IdMap } | null)?.idMap;
+  return idMap ?? {};
 }
 
 export async function discard(): Promise<void> {

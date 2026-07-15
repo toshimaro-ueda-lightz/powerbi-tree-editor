@@ -9,7 +9,7 @@
 //  - discard() -> just drops the session (DB untouched).
 
 import type Database from 'better-sqlite3';
-import type { DataStore } from '@powerbi-tree-editor/domain';
+import type { DataStore, IdMap } from '@powerbi-tree-editor/domain';
 import { applyChangelog, loadSnapshot, type Command } from './store.js';
 
 export interface Session {
@@ -48,11 +48,19 @@ export function discardSession(): void {
   session = null;
 }
 
-export function saveSession(db: Database.Database): void {
+/**
+ * Persists the session and returns the placeholder -> real id mapping for
+ * rows created during it, so the caller can re-key any temp ids it still
+ * holds. An empty map means nothing new was inserted (no session, or a
+ * session with no adds).
+ */
+export function saveSession(db: Database.Database): IdMap {
+  let idMap: IdMap = {};
   if (session && session.changeLog.length > 0) {
-    applyChangelog(db, session.changeLog);
+    idMap = applyChangelog(db, session.changeLog);
   }
   session = null;
+  return idMap;
 }
 
 /** Test-only escape hatch. */

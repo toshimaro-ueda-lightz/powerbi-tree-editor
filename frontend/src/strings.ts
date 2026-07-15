@@ -70,6 +70,7 @@ export const STRINGS = {
       6: '第6階層',
     } as Record<number, string>,
     nodeCode: 'ノードコード',
+    nodeCodePending: '保存後に採番されます',
     level: '階層',
     scope: '区分',
     scopeCommon: '共通施策',

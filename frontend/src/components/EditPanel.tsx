@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Scale3d, Unlink } from 'lucide-react';
+import { isTempId } from '@powerbi-tree-editor/domain';
 import type { TreeNodeView } from '../types';
 import { STRINGS } from '../strings';
 import { Banner, Button, FieldGroup, Tag } from './ui';
@@ -76,7 +77,10 @@ export function EditPanel({
 
       <Meta>
         <dt>{STRINGS.editPanel.nodeCode}</dt>
-        <dd>{selected.node_id}</dd>
+        {/* A not-yet-saved node only has a session-local placeholder id; the
+            real code is assigned by SQLite on save, so show the pending note
+            rather than leaking the internal uuid to the user (正本 §5.1). */}
+        <dd>{isTempId(selected.node_id) ? STRINGS.editPanel.nodeCodePending : selected.node_id}</dd>
         <dt>{STRINGS.editPanel.level}</dt>
         <dd>{LEVEL_TEXT[selected.level]}</dd>
         <dt>{STRINGS.editPanel.scope}</dt>

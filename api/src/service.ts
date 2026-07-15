@@ -12,6 +12,7 @@ import {
   computeAllProgress,
   isLeafNode,
   isValidWeightSum,
+  makeTempId,
   mapProgressLookup,
   normalizeWeights,
   parentEdgeOf,
@@ -34,8 +35,8 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function tempId(prefix: 'node' | 'edge'): string {
-  return `temp-${prefix}-${crypto.randomUUID()}`;
+function tempId(kind: 'node' | 'edge'): string {
+  return makeTempId(kind, crypto.randomUUID());
 }
 
 function findNode(data: DataStore, nodeId: string): NodeRecord | undefined {

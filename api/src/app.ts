@@ -96,8 +96,10 @@ export function buildApp(db: Database.Database): FastifyInstance {
   });
 
   app.post('/api/save', async () => {
-    saveSession(db);
-    return { ok: true };
+    // idMap re-keys placeholder ids the client may still be holding (e.g. the
+    // selected node) to the real ids assigned during this save.
+    const idMap = saveSession(db);
+    return { ok: true, idMap };
   });
 
   app.post('/api/discard', async () => {

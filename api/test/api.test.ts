@@ -207,6 +207,105 @@ describe('api', () => {
     expect(badRes.json().code).toBe('AREA_FIRST_LEVEL_ONLY');
   });
 
+  it('save returns an idMap resolving the session placeholder ids to the real inserted row ids', async () => {
+    const addRes = await app.inject({
+      method: 'POST',
+      url: '/api/departments/DT/nodes',
+      payload: { parentNodeId: String(ids.leafBId), name: 'mapped-child', weight: 1.0 },
+    });
+    const tempNodeId: string = addRes.json().nodeId;
+
+    const treeBefore = await app.inject({ method: 'GET', url: '/api/departments/DT/tree?fiscalYear=2026' });
+    const tempEdgeId: string = treeBefore.json().nodesById[tempNodeId].parentEdgeId;
+    expect(tempNodeId).toMatch(/^temp-node-/);
+    expect(tempEdgeId).toMatch(/^temp-edge-/);
+
+    const saveRes = await app.inject({ method: 'POST', url: '/api/save' });
+    const { ok, idMap } = saveRes.json();
+    expect(ok).toBe(true);
+
+    // every placeholder the client could still be holding must be resolvable...
+    const realNodeId = idMap[tempNodeId];
+    const realEdgeId = idMap[tempEdgeId];
+    expect(realNodeId).toBeDefined();
+    expect(realEdgeId).toBeDefined();
+    // ...to a real, numeric DB id
+    expect(Number.isInteger(Number(realNodeId))).toBe(true);
+    expect(Number.isInteger(Number(realEdgeId))).toBe(true);
+
+    // and the mapped ids must be the rows actually written
+    const row = db.prepare('SELECT name FROM node WHERE node_id = ?').get(Number(realNodeId)) as { name: string };
+    expect(row.name).toBe('mapped-child');
+    const tree = (await app.inject({ method: 'GET', url: '/api/departments/DT/tree?fiscalYear=2026' })).json();
+    expect(tree.nodesById[realNodeId]).toBeTruthy();
+    expect(tree.nodesById[realNodeId].parentEdgeId).toBe(realEdgeId);
+    expect(tree.nodesById[tempNodeId]).toBeUndefined();
+  });
+
+  it('add child -> rename that same child -> save writes the renamed value (temp id remap regression)', async () => {
+    const addRes = await app.inject({
+      method: 'POST',
+      url: '/api/departments/DT/nodes',
+      payload: { parentNodeId: String(ids.leafBId), name: 'original-name', weight: 1.0 },
+    });
+    const tempNodeId: string = addRes.json().nodeId;
+
+    // rename it *within the same session*, i.e. while it still only has a temp id
+    const patchRes = await app.inject({
+      method: 'PATCH',
+      url: `/api/nodes/${encodeURIComponent(tempNodeId)}`,
+      payload: { name: 'renamed-before-save', assignee: '担当者X' },
+    });
+    expect(patchRes.json().ok).toBe(true);
+
+    const saveRes = await app.inject({ method: 'POST', url: '/api/save' });
+    const realNodeId = saveRes.json().idMap[tempNodeId];
+    expect(realNodeId).toBeDefined();
+
+    const row = db
+      .prepare('SELECT name, assignee FROM node WHERE node_id = ?')
+      .get(Number(realNodeId)) as { name: string; assignee: string | null };
+    expect(row.name).toBe('renamed-before-save');
+    expect(row.assignee).toBe('担当者X');
+    // exactly one node row was created for this add (no duplicate insert)
+    const count = db.prepare("SELECT COUNT(*) AS c FROM node WHERE name = 'renamed-before-save'").get() as { c: number };
+    expect(count.c).toBe(1);
+  });
+
+  it('add child -> detach that same child -> save (temp edge detach does not break the replay)', async () => {
+    const addRes = await app.inject({
+      method: 'POST',
+      url: '/api/departments/DT/nodes',
+      payload: { parentNodeId: String(ids.leafBId), name: 'added-then-detached', weight: 1.0 },
+    });
+    const tempNodeId: string = addRes.json().nodeId;
+    const treeBefore = (await app.inject({ method: 'GET', url: '/api/departments/DT/tree?fiscalYear=2026' })).json();
+    const tempEdgeId: string = treeBefore.nodesById[tempNodeId].parentEdgeId;
+
+    const detachRes = await app.inject({
+      method: 'DELETE',
+      url: `/api/departments/DT/edges/${encodeURIComponent(tempEdgeId)}`,
+    });
+    expect(detachRes.json().ok).toBe(true);
+
+    const saveRes = await app.inject({ method: 'POST', url: '/api/save' });
+    expect(saveRes.json().ok).toBe(true);
+
+    // The node row is still inserted (soft-remove: node + history retained)...
+    const realNodeId = saveRes.json().idMap[tempNodeId];
+    const row = db.prepare('SELECT name FROM node WHERE node_id = ?').get(Number(realNodeId)) as { name: string };
+    expect(row.name).toBe('added-then-detached');
+    // ...but its edge is closed off, so it is not in the active tree.
+    const realEdgeId = saveRes.json().idMap[tempEdgeId];
+    const edge = db.prepare('SELECT valid_to FROM node_edge WHERE edge_id = ?').get(Number(realEdgeId)) as {
+      valid_to: string | null;
+    };
+    expect(edge.valid_to).not.toBeNull();
+    const tree = (await app.inject({ method: 'GET', url: '/api/departments/DT/tree?fiscalYear=2026' })).json();
+    expect(tree.nodesById[realNodeId]).toBeUndefined();
+    expect(tree.nodesById[String(ids.leafBId)].isLeaf).toBe(true);
+  });
+
   it('detach renormalizes sibling weight to 1.0, then rejects detaching a node with children', async () => {
     const res = await app.inject({ method: 'DELETE', url: `/api/departments/DT/edges/${ids.edgeParentToB}` });
     expect(res.json().ok).toBe(true);
