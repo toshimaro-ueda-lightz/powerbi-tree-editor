@@ -20,3 +20,6 @@ export type TreeFlowNode = Node<TreeNodeCardData, 'treeNode'>;
 
 export const NODE_WIDTH = 236;
 export const NODE_HEIGHT = 112;
+
+/** Height (px) of the fixed level-1..6 column header bar above the canvas (§4.3). */
+export const COLUMN_HEADER_HEIGHT = 32;
