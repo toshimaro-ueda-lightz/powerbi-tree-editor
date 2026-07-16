@@ -6,10 +6,31 @@ import { NODE_HEIGHT, NODE_WIDTH } from './types';
 
 const elk = new ELK();
 
+/**
+ * Id of the virtual root: a synthetic, layout-only node that `computeLayout`
+ * injects as the single parent of every level-1 node.
+ *
+ * It is NOT a real node. It does not exist in the DB, the API, or
+ * `packages/domain`, and it is never rendered — it exists only inside
+ * `computeLayout` and is stripped from the returned positions. The DB's
+ * `node` table even carries `CHECK (level BETWEEN 1 AND 6)`, so a level-0 row
+ * is physically impossible to store; that this concept is view-layer-only is
+ * structurally guaranteed, not just a convention.
+ *
+ * The id is prefixed with `__` (real node ids are stringified INTEGER
+ * `node_id`s from the DB, plus temp ids from `packages/domain`) so it cannot
+ * collide with a caller-supplied id.
+ */
+const VIRTUAL_ROOT_ID = '__layout_virtual_root__';
+
 export interface LayoutNodeInput {
   id: string;
   /** Business hierarchy level (第n階層). Determines the column (x) this node
-   * is pinned to — see `elk.partitioning.partition` below. */
+   * ends up in. Still required: `computeLayout` uses it to find the level-1
+   * nodes to attach the virtual root to (and callers derive columns from the
+   * resulting x — see `computeColumnPositions`). The column alignment itself
+   * is a structural consequence of the graph shape, not of a pinning option
+   * — see `computeLayout`. */
   level: number;
 }
 
@@ -22,6 +43,39 @@ export interface LayoutResult {
   positions: Map<string, { x: number; y: number }>;
 }
 
+/**
+ * Lays the tree out with ELK, guaranteeing that every node at the same
+ * business level shares one x (column).
+ *
+ * How the alignment is achieved: a single virtual root (see
+ * `VIRTUAL_ROOT_ID`) is injected as the parent of every level-1 node. This
+ * makes the whole department one connected tree, which matters twice over:
+ *
+ * 1. ELK's `layered` algorithm otherwise treats each level-1 root as its own
+ *    connected component and packs those components side by side, so columns
+ *    stop lining up across roots (department D04 has 5 roots — issue #10).
+ *    With one root there is nothing to pack; component packing never runs.
+ * 2. Every edge goes 第n -> 第n+1, so a node's path length from the virtual
+ *    root always equals its level. ELK's layer assignment minimizes edge
+ *    length, which makes "layer = business level" the unique optimum.
+ *
+ * So the alignment falls out of the graph's *shape* rather than being forced
+ * by a layout option — no reliance on ELK behaviour beyond its documented
+ * core (layering + component-free layout of a connected graph). y (sibling
+ * stacking / parent-child closeness within a column) is still left to ELK.
+ *
+ * INVARIANT THIS DEPENDS ON: the visible node set is ancestor-closed — the
+ * parent of any visible node is itself visible. That holds today: the level
+ * filter keeps 第1..n (so a parent is never dropped while a child stays), and
+ * collapsing only ever hides descendants. If a filter that hides *only a
+ * parent* is ever added, the orphaned children become their own connected
+ * components again, component packing resumes, and the columns break — and
+ * the "layer = business level" guarantee above breaks with them, because an
+ * orphan's path length from the virtual root no longer equals its level.
+ * Any change that can hide a parent while keeping a child visible must
+ * re-establish this invariant (e.g. by re-attaching orphans to the virtual
+ * root) or this function's contract no longer holds.
+ */
 export async function computeLayout({ nodes, edges }: LayoutInput): Promise<LayoutResult> {
   if (nodes.length === 0) return { positions: new Map() };
 
@@ -33,29 +87,32 @@ export async function computeLayout({ nodes, edges }: LayoutInput): Promise<Layo
       'elk.layered.spacing.nodeNodeBetweenLayers': '96',
       'elk.spacing.nodeNode': '28',
       'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      // Pin every node's column to its business hierarchy level instead of
-      // letting ELK infer a topological layer, and lay every root's subtree
-      // out in one shared coordinate space instead of packing each
-      // connected component (root) independently side by side. Without
-      // this, a forest with multiple level-1 roots (e.g. department D04 has
-      // 5) gets column x-positions that don't line up across roots — see
-      // issue #10. y (sibling stacking / parent-child closeness within a
-      // column) is still left to ELK.
-      'elk.partitioning.activate': 'true',
-      'elk.separateConnectedComponents': 'false',
     },
-    children: nodes.map((n) => ({
-      id: n.id,
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT,
-      layoutOptions: { 'elk.partitioning.partition': String(n.level) },
-    })),
-    edges: edges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
+    children: [
+      // Zero-sized so it occupies no visual space; it is dropped below and
+      // never reaches the canvas.
+      { id: VIRTUAL_ROOT_ID, width: 0, height: 0 },
+      ...nodes.map((n) => ({ id: n.id, width: NODE_WIDTH, height: NODE_HEIGHT })),
+    ],
+    edges: [
+      ...nodes
+        .filter((n) => n.level === 1)
+        .map((n) => ({
+          id: `${VIRTUAL_ROOT_ID}->${n.id}`,
+          sources: [VIRTUAL_ROOT_ID],
+          targets: [n.id],
+        })),
+      ...edges.map((e) => ({ id: e.id, sources: [e.source], targets: [e.target] })),
+    ],
   };
 
   const layouted = await elk.layout(graph);
   const positions = new Map<string, { x: number; y: number }>();
   for (const child of layouted.children ?? []) {
+    // Strip the virtual root: it is an implementation detail of this
+    // function and must never escape to callers (TreeCanvas would try to
+    // render it as a node).
+    if (child.id === VIRTUAL_ROOT_ID) continue;
     positions.set(child.id, { x: child.x ?? 0, y: child.y ?? 0 });
   }
   return { positions };
@@ -65,8 +122,8 @@ export async function computeLayout({ nodes, edges }: LayoutInput): Promise<Layo
  * Derives the fixed column x-position for each business hierarchy level from
  * already-computed node positions. Pure/sync so it's cheap to unit test
  * independently of ELK: `computeLayout` guarantees every node at the same
- * level shares one x (see `elk.partitioning.partition` above), so the first
- * position seen for a level is that level's column.
+ * level shares one x (via the virtual root — see `computeLayout` above), so
+ * the first position seen for a level is that level's column.
  *
  * Only levels that actually have at least one node in `nodes` are returned —
  * there is no x to anchor a column with zero visible nodes to (e.g. a

@@ -5,9 +5,10 @@ import { NODE_HEIGHT, NODE_WIDTH } from './types';
 // A forest with multiple level-1 roots, mirroring the real-world shape that
 // exposed issue #10: department D04 has 5 separate level-1 roots. ELK's
 // `layered` algorithm treats each root as its own connected component and
-// packs components side-by-side unless partitioning is forced (see
-// layout.ts) — so this synthetic shape is the actual regression case, not
-// just a simple single-root tree.
+// packs components side-by-side, which is what broke the columns; layout.ts
+// avoids that by joining every level-1 root under one virtual root, making
+// the graph a single connected tree. This synthetic shape is the actual
+// regression case, not just a simple single-root tree.
 const FOREST = {
   nodes: [
     { id: 'r1', level: 1 },
@@ -64,6 +65,20 @@ describe('computeLayout', () => {
     // The gap between level 1->2 and level 2->3 must match: columns are
     // evenly spaced regardless of how many siblings/roots sit in a level.
     expect(gap2to3).toBeCloseTo(gap1to2, 5);
+  });
+
+  it('does not leak the internal virtual root into the returned positions', async () => {
+    const { positions } = await computeLayout(FOREST);
+
+    // The virtual root is an implementation detail of computeLayout: it is
+    // added to the ELK graph to join the level-1 roots, but callers
+    // (TreeCanvas) must only ever see real nodes, or they would try to
+    // render a node that exists in neither the DB nor the API.
+    expect(positions.size).toBe(FOREST.nodes.length);
+    expect([...positions.keys()].sort()).toEqual(FOREST.nodes.map((n) => n.id).sort());
+    for (const key of positions.keys()) {
+      expect(key.startsWith('__')).toBe(false);
+    }
   });
 
   it('never overlaps sibling nodes vertically (rectangles do not intersect)', async () => {
