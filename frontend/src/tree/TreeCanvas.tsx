@@ -7,6 +7,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   type Edge,
+  type EdgeTypes,
   type Node,
   type NodeTypes,
 } from '@xyflow/react';
@@ -16,11 +17,16 @@ import { STRINGS } from '../strings';
 import { TreeCanvasEmpty } from '../App.styled';
 import { TreeNodeCard } from './TreeNodeCard';
 import { ColumnHeaders } from './ColumnHeaders';
+import { ElkEdge } from './ElkEdge';
 import { computeColumnPositions, computeLayout, toFlowElements } from './layout';
 import { NODE_HEIGHT, NODE_WIDTH, type TreeNodeCardData } from './types';
 import { ReactFlowViewport, TreeCanvasRoot } from './TreeCanvas.styled';
 
 const nodeTypes: NodeTypes = { treeNode: TreeNodeCard };
+// Defined outside the component, same reasoning as `nodeTypes` above: React
+// Flow treats a new `edgeTypes`/`nodeTypes` object identity as "the type map
+// changed" and remounts, so this must be a stable module-level reference.
+const edgeTypes: EdgeTypes = { elk: ElkEdge };
 
 export interface TreeCanvasProps {
   tree: TreeSnapshot;
@@ -149,7 +155,7 @@ function TreeCanvasInner({
     computeLayout({
       nodes: visibleIds.map((id) => ({ id, level: tree.nodesById[id]!.level })),
       edges: edgeDefs.map((e) => ({ id: e.id, source: e.source, target: e.target })),
-    }).then(({ positions }) => {
+    }).then(({ positions, routes }) => {
       if (cancelled) return;
       const { nodes, edges } = toFlowElements<TreeNodeCardData>(
         visibleIds,
@@ -172,6 +178,7 @@ function TreeCanvasInner({
           };
         },
         edgeDefs,
+        routes,
       );
       setFlowNodes(nodes);
       setFlowEdges(edges);
@@ -249,6 +256,7 @@ function TreeCanvasInner({
           nodes={flowNodes}
           edges={flowEdges}
           nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
           onNodeClick={(_, node) => onSelectNode(node.id)}
           onPaneClick={() => onSelectNode('')}
           nodesDraggable={false}
