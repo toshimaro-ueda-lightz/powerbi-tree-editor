@@ -3,12 +3,18 @@ import { computeColumnPositions, computeLayout } from './layout';
 import { NODE_HEIGHT, NODE_WIDTH } from './types';
 
 // A forest with multiple level-1 roots, mirroring the real-world shape that
-// exposed issue #10: department D04 has 5 separate level-1 roots. ELK's
-// `layered` algorithm treats each root as its own connected component and
-// packs components side-by-side, which is what broke the columns; layout.ts
-// avoids that by joining every level-1 root under one virtual root, making
-// the graph a single connected tree. This synthetic shape is the actual
-// regression case, not just a simple single-root tree.
+// exposed issue #10: department D04 has 5 separate level-1 roots. `mrtree`
+// (like `layered` before it) treats each disconnected root as its own
+// component and can lay components out separately
+// (`separateConnectedComponents`), which is what would break the columns;
+// layout.ts avoids that by joining every level-1 root under one virtual
+// root, making the graph a single connected tree. This synthetic shape is
+// the actual regression case, not just a simple single-root tree.
+//
+// r1 and r2 each have 3 children (…-a/-b/-c, in that data order) rather than
+// 2: issue #14's sibling-order guarantee is only meaningfully tested with 3+
+// siblings, where "preserves order" and "coincidentally already sorted"
+// stop being the same thing.
 const FOREST = {
   nodes: [
     { id: 'r1', level: 1 },
@@ -16,13 +22,19 @@ const FOREST = {
     { id: 'r3', level: 1 },
     { id: 'r1-a', level: 2 },
     { id: 'r1-b', level: 2 },
+    { id: 'r1-c', level: 2 },
     { id: 'r2-a', level: 2 },
+    { id: 'r2-b', level: 2 },
+    { id: 'r2-c', level: 2 },
     { id: 'r1-a-x', level: 3 },
   ],
   edges: [
     { id: 'e1', source: 'r1', target: 'r1-a' },
     { id: 'e2', source: 'r1', target: 'r1-b' },
+    { id: 'e2c', source: 'r1', target: 'r1-c' },
     { id: 'e3', source: 'r2', target: 'r2-a' },
+    { id: 'e3b', source: 'r2', target: 'r2-b' },
+    { id: 'e3c', source: 'r2', target: 'r2-c' },
     { id: 'e4', source: 'r1-a', target: 'r1-a-x' },
     // r3 is a lone root with no children.
   ],
@@ -91,6 +103,60 @@ describe('computeLayout', () => {
     expect(rectsOverlap(positions.get('r1')!.y, positions.get('r2')!.y)).toBe(false);
     expect(rectsOverlap(positions.get('r2')!.y, positions.get('r3')!.y)).toBe(false);
     expect(rectsOverlap(positions.get('r1')!.y, positions.get('r3')!.y)).toBe(false);
+  });
+
+  // Issue #14 criterion 1: sibling vertical order must follow input (data)
+  // order, not an arbitrary crossing-minimization order. Business data
+  // encodes its intended order in names (①②③…), so the y-order of siblings
+  // in the rendered tree must match the order they appear in `nodes`/`edges`.
+  it('stacks siblings top -> bottom in the same order they appear in the input data', async () => {
+    const { positions } = await computeLayout(FOREST);
+
+    expect(positions.get('r1-a')!.y).toBeLessThan(positions.get('r1-b')!.y);
+    expect(positions.get('r1-b')!.y).toBeLessThan(positions.get('r1-c')!.y);
+
+    expect(positions.get('r2-a')!.y).toBeLessThan(positions.get('r2-b')!.y);
+    expect(positions.get('r2-b')!.y).toBeLessThan(positions.get('r2-c')!.y);
+  });
+
+  // Issue #14 criterion 2: removing an unrelated branch from the input (what
+  // collapsing a branch elsewhere effectively does, since collapsed
+  // descendants are simply excluded from `nodes`/`edges`) must not reorder
+  // the siblings of an unrelated parent. Absolute y is allowed to shift
+  // (removing r2's subtree frees vertical space), but r1's children must
+  // keep their relative order.
+  it('keeps an unrelated parent\'s sibling order unchanged when another branch is removed (collapse-equivalent)', async () => {
+    const { positions: withR2 } = await computeLayout(FOREST);
+    expect(withR2.get('r1-a')!.y).toBeLessThan(withR2.get('r1-b')!.y);
+    expect(withR2.get('r1-b')!.y).toBeLessThan(withR2.get('r1-c')!.y);
+
+    const withoutR2Subtree = {
+      nodes: FOREST.nodes.filter((n) => !n.id.startsWith('r2')),
+      edges: FOREST.edges.filter((e) => !e.source.startsWith('r2') && !e.target.startsWith('r2')),
+    };
+    const { positions: withoutR2 } = await computeLayout(withoutR2Subtree);
+
+    expect(withoutR2.get('r1-a')!.y).toBeLessThan(withoutR2.get('r1-b')!.y);
+    expect(withoutR2.get('r1-b')!.y).toBeLessThan(withoutR2.get('r1-c')!.y);
+  });
+
+  // Issue #14 criterion 3: a parent must be centered on its children, i.e.
+  // its own center-y must equal the midpoint of its children's center-y
+  // extent (min and max). This is the Reingold-Tilford-style guarantee that
+  // `mrtree` provides structurally; `layered` only satisfied it for 43/67
+  // parents on real data (max 659px off). 10px tolerance per the issue
+  // (measured max deviation on real data was 1px).
+  it('centers each parent on the midpoint of its children\'s y-extent', async () => {
+    const { positions } = await computeLayout(FOREST);
+    const centerY = (id: string) => positions.get(id)!.y + NODE_HEIGHT / 2;
+
+    const r1Children = ['r1-a', 'r1-b', 'r1-c'].map(centerY);
+    const r1Midpoint = (Math.min(...r1Children) + Math.max(...r1Children)) / 2;
+    expect(Math.abs(centerY('r1') - r1Midpoint)).toBeLessThanOrEqual(10);
+
+    const r2Children = ['r2-a', 'r2-b', 'r2-c'].map(centerY);
+    const r2Midpoint = (Math.min(...r2Children) + Math.max(...r2Children)) / 2;
+    expect(Math.abs(centerY('r2') - r2Midpoint)).toBeLessThanOrEqual(10);
   });
 });
 
