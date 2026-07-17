@@ -119,6 +119,29 @@ describe('computeLayout', () => {
     expect(positions.get('r2-b')!.y).toBeLessThan(positions.get('r2-c')!.y);
   });
 
+  // The test above alone does not prove data order is preserved: FOREST's
+  // input order happens to be alphabetical, so an algorithm that ignored
+  // input order entirely could still pass it by coincidence. Feeding the
+  // same tree in a deliberately non-alphabetical order pins the actual
+  // guarantee — y-order tracks *input* order, whatever it is. This is what
+  // regresses if `mrtree`'s `weighting: MODEL_ORDER` default is ever lost
+  // (ELK's `layered` used to reorder these freely — issue #14).
+  it('follows input order even when it contradicts any natural sort of the ids', async () => {
+    const reversed = {
+      nodes: FOREST.nodes,
+      edges: [
+        { id: 'e2c', source: 'r1', target: 'r1-c' },
+        { id: 'e2', source: 'r1', target: 'r1-b' },
+        { id: 'e1', source: 'r1', target: 'r1-a' },
+        ...FOREST.edges.filter((e) => e.source !== 'r1'),
+      ],
+    };
+    const { positions } = await computeLayout(reversed);
+
+    expect(positions.get('r1-c')!.y).toBeLessThan(positions.get('r1-b')!.y);
+    expect(positions.get('r1-b')!.y).toBeLessThan(positions.get('r1-a')!.y);
+  });
+
   // Issue #14 criterion 2: removing an unrelated branch from the input (what
   // collapsing a branch elsewhere effectively does, since collapsed
   // descendants are simply excluded from `nodes`/`edges`) must not reorder
