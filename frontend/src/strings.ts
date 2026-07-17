@@ -103,17 +103,6 @@ export const STRINGS = {
     apply: '反映',
   },
 
-  addChildDialog: {
-    title: (parentName: string) => `子施策を追加: ${parentName}`,
-    description: (childLevel: number, parentName: string) => `第${childLevel}階層の施策として、「${parentName}」の子に追加します。`,
-    nameRequired: '施策名（必須）',
-    subtitle: 'サブタイトル',
-    assignee: '担当者',
-    weightLabel: '親からの重み (%)',
-    weightHint: '兄弟施策との合計が100%になるように入力してください。',
-    add: '追加',
-  },
-
   treeNode: {
     levelBadge: {
       1: 'L1',
@@ -139,6 +128,7 @@ export const STRINGS = {
   app: {
     addChildRejectedProgress:
       '成果進捗が入力済み（0%超）のため子施策を追加できません。成果進捗を0%にして保存してから追加してください（確認なしで操作を拒否しています）。',
+    newChildDefaultName: '新しい施策',
     emptyTree: 'この部署・年度で表示できる施策がありません。',
     loadingTree: '読み込み中...',
     loadingDepartments: '部署一覧を読み込み中...',
