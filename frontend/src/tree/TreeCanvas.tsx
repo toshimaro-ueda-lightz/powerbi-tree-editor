@@ -17,6 +17,7 @@ import { TreeCanvasEmpty } from '../App.styled';
 import { TreeNodeCard } from './TreeNodeCard';
 import { ColumnHeaders } from './ColumnHeaders';
 import { computeColumnPositions, computeLayout, toFlowElements } from './layout';
+import { useAnimatedNodes } from './useAnimatedNodes';
 import { NODE_HEIGHT, NODE_WIDTH, type TreeNodeCardData } from './types';
 import { ReactFlowViewport, TreeCanvasRoot } from './TreeCanvas.styled';
 
@@ -68,6 +69,13 @@ function TreeCanvasInner({
   // consumed the first time flowNodes for that key are ready — so
   // collapsing/filtering/selecting afterwards never re-triggers it (B.1/B.2).
   const pendingCenterKeyRef = useRef<string | null>(`${tree.departmentId}:${tree.fiscalYear}`);
+  // Position-only tween of `flowNodes` toward each new ELK/mrtree layout
+  // (§4.3: additions/removals must move siblings, not teleport them). Only
+  // used for the actual `<ReactFlow>` render below — `focusNode` and the
+  // auto-centering effect intentionally keep reading `flowNodes` (the
+  // layout's final positions), not this, so they never center on a
+  // mid-animation position (see their comments).
+  const animatedNodes = useAnimatedNodes(flowNodes);
 
   const toggleCollapse = (nodeId: string) => {
     setCollapsedIds((prev) => {
@@ -246,7 +254,7 @@ function TreeCanvasInner({
       <ColumnHeaders columnPositions={columnPositions} />
       <ReactFlowViewport>
         <ReactFlow
-          nodes={flowNodes}
+          nodes={animatedNodes}
           edges={flowEdges}
           nodeTypes={nodeTypes}
           onNodeClick={(_, node) => onSelectNode(node.id)}

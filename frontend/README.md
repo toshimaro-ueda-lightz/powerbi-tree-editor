@@ -88,7 +88,7 @@ npm run test:watch -w frontend
 npm run storybook -w frontend
 ```
 
-`http://localhost:6006` で Storybook が起動し、表示系コンポーネント（Header / Sidebar / EditPanel / AddChildDialog / WeightEditorDialog / Modal / TreeNodeCard）を単体で確認できます。`TreeCanvas` は React Flow のキャンバス全体に依存するため対象外です。
+`http://localhost:6006` で Storybook が起動し、表示系コンポーネント（Header / Sidebar / EditPanel / WeightEditorDialog / Modal / TreeNodeCard）を単体で確認できます。`TreeCanvas` は React Flow のキャンバス全体に依存するため対象外です。
 
 ```bash
 npm run build-storybook -w frontend

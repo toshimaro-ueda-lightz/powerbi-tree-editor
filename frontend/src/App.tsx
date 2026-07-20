@@ -4,7 +4,6 @@ import type { DepartmentRecord } from '@powerbi-tree-editor/domain';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditPanel } from './components/EditPanel';
-import { AddChildDialog } from './components/AddChildDialog';
 import { WeightEditorDialog } from './components/WeightEditorDialog';
 import { IconButton } from './components/ui';
 import { AppShell, AppBody, AppMain, TreeCanvasEmpty, FloatingBanner } from './App.styled';
@@ -43,12 +42,10 @@ function App() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [fiscalYear, setFiscalYear] = useState(CURRENT_FISCAL_YEAR);
   const [tree, setTree] = useState<TreeSnapshot | null>(null);
-  const [treeLoading, setTreeLoading] = useState(true);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [maxLevel, setMaxLevel] = useState(6);
   const [assigneeFilter, setAssigneeFilter] = useState('');
-  const [addChildParentId, setAddChildParentId] = useState<string | null>(null);
   const [weightEditorParentId, setWeightEditorParentId] = useState<string | null>(null);
   const [canvasBanner, setCanvasBanner] = useState<string | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
@@ -75,17 +72,24 @@ function App() {
   useEffect(() => {
     if (!selectedDepartmentId) return;
     let alive = true;
-    setTreeLoading(true);
     getTree(selectedDepartmentId, fiscalYear).then((snapshot) => {
       if (!alive) return;
       setTree(snapshot);
-      setTreeLoading(false);
     });
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDepartmentId, fiscalYear, apiVersion]);
+
+  // Loading is derived, not stored: `tree` still holds the previous
+  // snapshot while a mutation-triggered refetch (apiVersion bump) is in
+  // flight, so TreeCanvas stays mounted and keeps its collapse/zoom state.
+  // Only a department/year switch — where `tree`'s key no longer matches
+  // the current selection — should show the loading placeholder and remount
+  // TreeCanvas (画面設計書 §4.3: ローディング表示は初回読込と部署・年度切替時のみ).
+  const treeLoading =
+    tree === null || tree.departmentId !== selectedDepartmentId || tree.fiscalYear !== fiscalYear;
 
   const effectiveTree = tree ?? EMPTY_TREE(selectedDepartmentId, fiscalYear);
 
@@ -123,7 +127,10 @@ function App() {
     setPanelError(null);
   }
 
-  function handleRequestAddChild(parentNodeId: string) {
+  // No input dialog: the "+" adds the child immediately with default values
+  // (画面設計書 §4.3 / addChild). Name is a placeholder the user renames via
+  // PNL-01; weight is whatever keeps the sibling total at 100%.
+  async function handleRequestAddChild(parentNodeId: string) {
     const parent = effectiveTree.nodesById[parentNodeId];
     if (!parent) return;
     if (parent.isLeaf && parent.outcomeProgress > 0) {
@@ -131,14 +138,17 @@ function App() {
       return;
     }
     setCanvasBanner(null);
-    setAddChildParentId(parentNodeId);
-  }
-
-  async function handleAddChildSubmit(input: { name: string; subtitle?: string | null; assignee?: string | null; weight: number }) {
-    if (!addChildParentId) return { ok: false as const, reason: STRINGS.app.internalNoParent };
-    const result = await addChildNode(selectedDepartmentId, addChildParentId, input);
-    if (result.ok) setSelectedNodeId(result.nodeId);
-    return result;
+    const result = await addChildNode(selectedDepartmentId, parentNodeId, {
+      name: STRINGS.app.newChildDefaultName,
+      subtitle: null,
+      assignee: null,
+      weight: suggestedWeightPct(parentNodeId) / 100,
+    });
+    if (result.ok) {
+      setSelectedNodeId(result.nodeId);
+    } else {
+      setCanvasBanner(result.reason);
+    }
   }
 
   function suggestedWeightPct(parentNodeId: string): number {
@@ -202,7 +212,6 @@ function App() {
       // isn't in the map is a pre-existing real id and is already correct.
       const remap = (id: string | null): string | null => (id === null ? null : idMap[id] ?? id);
       setSelectedNodeId(remap);
-      setAddChildParentId(remap);
       setWeightEditorParentId(remap);
       setSaveStatus('idle');
     } catch {
@@ -219,7 +228,6 @@ function App() {
   }
 
   const weightEditorParent = weightEditorParentId ? effectiveTree.nodesById[weightEditorParentId] : null;
-  const addChildParent = addChildParentId ? effectiveTree.nodesById[addChildParentId] : null;
 
   return (
     <AppShell>
@@ -291,15 +299,6 @@ function App() {
           errorMessage={panelError}
         />
       </AppBody>
-
-      {addChildParent && (
-        <AddChildDialog
-          parentView={addChildParent}
-          suggestedWeightPct={suggestedWeightPct(addChildParent.node_id)}
-          onSubmit={handleAddChildSubmit}
-          onClose={() => setAddChildParentId(null)}
-        />
-      )}
 
       {weightEditorParent && (
         <WeightEditorDialog
