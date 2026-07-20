@@ -19,6 +19,7 @@ export const Empty: Story = {
     selected: null,
     parentView: null,
     fiscalYear: CURRENT_FISCAL_YEAR,
+    readOnly: false,
     onUpdateNode: noop,
     onUpdateProgress: noop,
     onUpdateArea: noop,
@@ -50,5 +51,13 @@ export const WithError: Story = {
   args: {
     ...LeafNode.args,
     errorMessage: '成果進捗は0〜100%の範囲で入力してください。',
+  },
+};
+
+/** 閲覧モード: 入力欄・保存・重み編集・ツリーから外すボタンをすべて隠し、値のみ表示する。 */
+export const ReadOnly: Story = {
+  args: {
+    ...LeafNode.args,
+    readOnly: true,
   },
 };

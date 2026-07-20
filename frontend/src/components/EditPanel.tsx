@@ -23,6 +23,7 @@ interface EditPanelProps {
   selected: TreeNodeView | null;
   parentView: TreeNodeView | null;
   fiscalYear: number;
+  readOnly: boolean;
   onUpdateNode: (patch: { name?: string; subtitle?: string | null; assignee?: string | null }) => void;
   onUpdateProgress: (pct: number) => void;
   onUpdateArea: (value: number) => void;
@@ -37,6 +38,7 @@ export function EditPanel({
   selected,
   parentView,
   fiscalYear,
+  readOnly,
   onUpdateNode,
   onUpdateProgress,
   onUpdateArea,
@@ -89,56 +91,77 @@ export function EditPanel({
         <dd>{parentView ? parentView.name : STRINGS.common.noneFirstLevel}</dd>
       </Meta>
 
-      <FieldGroup>
-        <label htmlFor="field-name">{STRINGS.editPanel.name}</label>
-        <input
-          id="field-name"
-          type="text"
-          value={draftName}
-          disabled={!editableBasic}
-          onChange={(e) => setDraftName(e.target.value)}
-        />
-      </FieldGroup>
+      {readOnly ? (
+        <>
+          <FieldGroup>
+            <label>{STRINGS.editPanel.name}</label>
+            <ComputedValue>{selected.name}</ComputedValue>
+          </FieldGroup>
 
-      <FieldGroup>
-        <label htmlFor="field-subtitle">{STRINGS.editPanel.subtitle}</label>
-        <input
-          id="field-subtitle"
-          type="text"
-          value={draftSubtitle}
-          disabled={!editableBasic}
-          onChange={(e) => setDraftSubtitle(e.target.value)}
-        />
-      </FieldGroup>
+          <FieldGroup>
+            <label>{STRINGS.editPanel.subtitle}</label>
+            <ComputedValue>{selected.subtitle || STRINGS.common.noneFirstLevel}</ComputedValue>
+          </FieldGroup>
 
-      <FieldGroup>
-        <label htmlFor="field-assignee">{STRINGS.editPanel.assignee}</label>
-        <input
-          id="field-assignee"
-          type="text"
-          value={draftAssignee}
-          disabled={!editableBasic}
-          onChange={(e) => setDraftAssignee(e.target.value)}
-        />
-      </FieldGroup>
-
-      {editableBasic ? (
-        <SaveButton
-          type="button"
-          $variant="primary"
-          disabled={!dirtyBasic || draftName.trim() === ''}
-          onClick={() =>
-            onUpdateNode({
-              name: draftName.trim(),
-              subtitle: draftSubtitle.trim() === '' ? null : draftSubtitle,
-              assignee: draftAssignee.trim() === '' ? null : draftAssignee,
-            })
-          }
-        >
-          {STRINGS.editPanel.saveBasic}
-        </SaveButton>
+          <FieldGroup>
+            <label>{STRINGS.editPanel.assignee}</label>
+            <ComputedValue>{selected.assignee || STRINGS.common.noneFirstLevel}</ComputedValue>
+          </FieldGroup>
+        </>
       ) : (
-        <ReadonlyNote>{STRINGS.editPanel.readonlyCommonNote}</ReadonlyNote>
+        <>
+          <FieldGroup>
+            <label htmlFor="field-name">{STRINGS.editPanel.name}</label>
+            <input
+              id="field-name"
+              type="text"
+              value={draftName}
+              disabled={!editableBasic}
+              onChange={(e) => setDraftName(e.target.value)}
+            />
+          </FieldGroup>
+
+          <FieldGroup>
+            <label htmlFor="field-subtitle">{STRINGS.editPanel.subtitle}</label>
+            <input
+              id="field-subtitle"
+              type="text"
+              value={draftSubtitle}
+              disabled={!editableBasic}
+              onChange={(e) => setDraftSubtitle(e.target.value)}
+            />
+          </FieldGroup>
+
+          <FieldGroup>
+            <label htmlFor="field-assignee">{STRINGS.editPanel.assignee}</label>
+            <input
+              id="field-assignee"
+              type="text"
+              value={draftAssignee}
+              disabled={!editableBasic}
+              onChange={(e) => setDraftAssignee(e.target.value)}
+            />
+          </FieldGroup>
+
+          {editableBasic ? (
+            <SaveButton
+              type="button"
+              $variant="primary"
+              disabled={!dirtyBasic || draftName.trim() === ''}
+              onClick={() =>
+                onUpdateNode({
+                  name: draftName.trim(),
+                  subtitle: draftSubtitle.trim() === '' ? null : draftSubtitle,
+                  assignee: draftAssignee.trim() === '' ? null : draftAssignee,
+                })
+              }
+            >
+              {STRINGS.editPanel.saveBasic}
+            </SaveButton>
+          ) : (
+            <ReadonlyNote>{STRINGS.editPanel.readonlyCommonNote}</ReadonlyNote>
+          )}
+        </>
       )}
 
       <FieldGroup>
@@ -147,7 +170,7 @@ export function EditPanel({
           <WeightValue>
             {selected.weightFromParent !== null ? `${(selected.weightFromParent * 100).toFixed(1)}%` : STRINGS.common.noneFirstLevel}
           </WeightValue>
-          {selected.parentNodeId && (
+          {!readOnly && selected.parentNodeId && (
             <Button type="button" $variant="secondary" $small onClick={() => onOpenWeightEditor(selected.parentNodeId!)}>
               <Scale3d size={13} />
               {STRINGS.editPanel.openWeightEditor}
@@ -158,7 +181,7 @@ export function EditPanel({
 
       <FieldGroup>
         <label htmlFor="field-progress">{STRINGS.editPanel.outcomeProgress}</label>
-        {selected.isLeaf ? (
+        {!readOnly && selected.isLeaf ? (
           <ProgressEditor>
             <input
               id="field-progress"
@@ -184,31 +207,36 @@ export function EditPanel({
           </ProgressEditor>
         ) : (
           <ComputedValue>
-            {Math.round(selected.outcomeProgress * 100)}% <Tag>{STRINGS.editPanel.computedTag}</Tag>
+            {Math.round(selected.outcomeProgress * 100)}%{' '}
+            {!selected.isLeaf && <Tag>{STRINGS.editPanel.computedTag}</Tag>}
           </ComputedValue>
         )}
       </FieldGroup>
 
       {selected.level === 1 && (
         <FieldGroup>
-          <label htmlFor="field-area">{STRINGS.editPanel.areaLabel(fiscalYear)}</label>
-          <input
-            id="field-area"
-            type="number"
-            min={0}
-            value={draftArea}
-            placeholder={STRINGS.editPanel.areaPlaceholder}
-            onChange={(e) => setDraftArea(e.target.value)}
-            onBlur={() => {
-              const v = Number(draftArea);
-              if (draftArea.trim() !== '' && !Number.isNaN(v)) onUpdateArea(v);
-            }}
-          />
+          <label htmlFor={readOnly ? undefined : 'field-area'}>{STRINGS.editPanel.areaLabel(fiscalYear)}</label>
+          {readOnly ? (
+            <ComputedValue>{selected.area !== null ? selected.area : STRINGS.editPanel.areaPlaceholder}</ComputedValue>
+          ) : (
+            <input
+              id="field-area"
+              type="number"
+              min={0}
+              value={draftArea}
+              placeholder={STRINGS.editPanel.areaPlaceholder}
+              onChange={(e) => setDraftArea(e.target.value)}
+              onBlur={() => {
+                const v = Number(draftArea);
+                if (draftArea.trim() !== '' && !Number.isNaN(v)) onUpdateArea(v);
+              }}
+            />
+          )}
           {selected.area === null && <ReadonlyNote>{STRINGS.editPanel.areaMissing(fiscalYear)}</ReadonlyNote>}
         </FieldGroup>
       )}
 
-      {selected.isLeaf && (
+      {!readOnly && selected.isLeaf && (
         <DetachButton type="button" $variant="danger" onClick={() => onDetach(selected.node_id)}>
           <Unlink size={14} />
           {STRINGS.editPanel.detach}

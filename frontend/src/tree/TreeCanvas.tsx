@@ -32,6 +32,7 @@ export interface TreeCanvasProps {
   maxLevel: number;
   searchTerm: string;
   assigneeFilter: string;
+  editable: boolean;
 }
 
 export interface TreeCanvasHandle {
@@ -57,6 +58,7 @@ function TreeCanvasInner({
   maxLevel,
   searchTerm,
   assigneeFilter,
+  editable,
   forwardedRef,
 }: TreeCanvasProps & { forwardedRef: React.ForwardedRef<TreeCanvasHandle> }) {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -171,8 +173,8 @@ function TreeCanvasInner({
             isDimmed: filterActive && !matchedIds.has(id),
             isCollapsed: collapsedIds.has(id),
             hasHiddenChildren: hasHiddenChildrenSet.has(id),
-            canAddChild: view.level >= 3 && view.level <= 5,
-            canDetach: view.isLeaf,
+            canAddChild: editable && view.level >= 3 && view.level <= 5,
+            canDetach: editable && view.isLeaf,
             onSelect: onSelectNode,
             onToggleCollapse: toggleCollapse,
             onAddChild: onRequestAddChild,
@@ -194,7 +196,7 @@ function TreeCanvasInner({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleIds.join(','), tree, selectedNodeId, collapsedIds, filterActive]);
+  }, [visibleIds.join(','), tree, selectedNodeId, collapsedIds, filterActive, editable]);
 
   useImperativeHandle(forwardedRef, () => ({
     // Full-tree fit — kept for the sidebar's explicit "全体表示" button only.

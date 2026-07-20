@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Save, Undo2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pencil, Save, Undo2 } from 'lucide-react';
 import type { DepartmentRecord } from '@powerbi-tree-editor/domain';
 import { STRINGS } from '../strings';
 import { CURRENT_FISCAL_YEAR } from '../config';
@@ -12,6 +12,8 @@ interface HeaderProps {
   onChangeDepartment: (id: string) => void;
   fiscalYear: number;
   onChangeFiscalYear: (year: number) => void;
+  mode: 'view' | 'edit';
+  onEnterEdit: () => void;
   isDirty: boolean;
   saveStatus: SaveStatus;
   onSave: () => void;
@@ -24,6 +26,8 @@ export function Header({
   onChangeDepartment,
   fiscalYear,
   onChangeFiscalYear,
+  mode,
+  onEnterEdit,
   isDirty,
   saveStatus,
   onSave,
@@ -78,28 +82,41 @@ export function Header({
 
       <Spacer />
 
-      <DirtyIndicator $dirty={isDirty || saveStatus === 'error'} $saving={busy}>
-        {statusLabel}
-      </DirtyIndicator>
+      {mode === 'view' ? (
+        <Button type="button" $variant="primary" onClick={onEnterEdit}>
+          <Pencil size={14} />
+          {STRINGS.header.editButton}
+        </Button>
+      ) : (
+        <>
+          <DirtyIndicator $dirty={isDirty || saveStatus === 'error'} $saving={busy}>
+            {statusLabel}
+          </DirtyIndicator>
 
-      <Button
-        type="button"
-        $variant="ghost"
-        disabled={!isDirty || busy}
-        onClick={() => {
-          if (window.confirm(STRINGS.header.discardConfirm)) {
-            onDiscard();
-          }
-        }}
-      >
-        <Undo2 size={14} />
-        {STRINGS.header.discardButton}
-      </Button>
+          <Button
+            type="button"
+            $variant="ghost"
+            disabled={busy}
+            onClick={() => {
+              if (isDirty) {
+                if (window.confirm(STRINGS.header.discardConfirm)) {
+                  onDiscard();
+                }
+              } else {
+                onDiscard();
+              }
+            }}
+          >
+            <Undo2 size={14} />
+            {STRINGS.header.discardButton}
+          </Button>
 
-      <Button type="button" $variant="primary" onClick={onSave} disabled={!isDirty || busy}>
-        <Save size={14} />
-        {STRINGS.header.saveButton}
-      </Button>
+          <Button type="button" $variant="primary" onClick={onSave} disabled={!isDirty || busy}>
+            <Save size={14} />
+            {STRINGS.header.saveButton}
+          </Button>
+        </>
+      )}
     </HeaderBar>
   );
 }

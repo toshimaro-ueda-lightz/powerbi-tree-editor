@@ -20,6 +20,8 @@ export const Default: Story = {
     onChangeDepartment: () => {},
     fiscalYear: CURRENT_FISCAL_YEAR - 1,
     onChangeFiscalYear: () => {},
+    mode: 'edit',
+    onEnterEdit: () => {},
     isDirty: false,
     saveStatus: 'idle',
     onSave: () => {},
@@ -27,9 +29,27 @@ export const Default: Story = {
   },
 };
 
+/** 閲覧モード: 部署/年度セレクトと編集ボタンのみ。保存/破棄/未保存マークは非表示。 */
+export const ViewMode: Story = {
+  args: {
+    ...Default.args,
+    mode: 'view',
+  },
+};
+
+/** 編集モード（未保存なし）: 破棄ボタンは確認なしで押せる。 */
+export const EditModeClean: Story = {
+  args: {
+    ...Default.args,
+    mode: 'edit',
+    isDirty: false,
+  },
+};
+
 export const Dirty: Story = {
   args: {
     ...Default.args,
+    mode: 'edit',
     isDirty: true,
   },
 };
