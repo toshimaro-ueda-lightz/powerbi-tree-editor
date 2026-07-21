@@ -1,0 +1,25 @@
+{
+  "name": "@powerbi-tree-editor/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local Fastify API in front of SQLite. React never touches SQLite directly — everything goes through this process.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@powerbi-tree-editor/domain": "*",
+    "better-sqlite3": "^12.11.1",
+    "fastify": "^5.10.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.10"
+  }
+}
