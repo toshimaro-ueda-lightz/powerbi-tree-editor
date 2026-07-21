@@ -33,6 +33,13 @@ export const STRINGS = {
     discardConfirm: 'ここまでの変更を破棄し、保存済みの状態に戻します。よろしいですか？',
     discardButton: '変更を破棄',
     saveButton: '変更をSQLiteへ保存',
+    editButton: '編集',
+  },
+
+  dialog: {
+    unsavedTitle: '未保存の変更があります',
+    unsavedBody: '編集中の変更が保存されていません。破棄して切り替えますか？',
+    unsavedDiscardSwitch: '破棄して切替',
   },
 
   sidebar: {

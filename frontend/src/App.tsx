@@ -5,6 +5,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { EditPanel } from './components/EditPanel';
 import { WeightEditorDialog } from './components/WeightEditorDialog';
+import { UnsavedSwitchDialog } from './components/UnsavedSwitchDialog';
 import { IconButton } from './components/ui';
 import { AppShell, AppBody, AppMain, TreeCanvasEmpty, FloatingBanner } from './App.styled';
 import { TreeCanvas, type TreeCanvasHandle } from './tree/TreeCanvas';
@@ -50,8 +51,11 @@ function App() {
   const [canvasBanner, setCanvasBanner] = useState<string | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [pendingSwitch, setPendingSwitch] = useState<null | { kind: 'dept' | 'year'; value: string | number }>(null);
 
   const treeCanvasRef = useRef<TreeCanvasHandle>(null);
+  const modeInitializedRef = useRef(false);
 
   // Load the department list once on mount.
   useEffect(() => {
@@ -66,6 +70,20 @@ function App() {
       alive = false;
     };
   }, []);
+
+  // Decide the initial mode from the server's session state: if a dirty
+  // session already exists (e.g. the user reloaded mid-edit — the session
+  // lives on the server, not in this tab), start in 'edit' so the "discard
+  // returns to edit-start state" guarantee still holds. Runs exactly once,
+  // gated on both the department list and the api service's initial dirty-
+  // state fetch (apiVersion bumps once refreshDirtyState() resolves) so
+  // isDirty() reflects the real server value rather than its false default.
+  useEffect(() => {
+    if (modeInitializedRef.current) return;
+    if (!departmentsLoaded || apiVersion < 1) return;
+    modeInitializedRef.current = true;
+    setMode(isDirty() ? 'edit' : 'view');
+  }, [departmentsLoaded, apiVersion]);
 
   // (Re)fetch the tree whenever the selected department/year changes, or the
   // api service reports a mutation/save/discard (apiVersion bump).
@@ -115,16 +133,52 @@ function App() {
     setPanelError(null);
   }
 
-  function handleChangeDepartment(id: string) {
+  function applyDepartmentChange(id: string) {
     setSelectedDepartmentId(id);
     setSelectedNodeId(null);
     setPanelError(null);
     setCanvasBanner(null);
   }
 
-  function handleChangeFiscalYear(year: number) {
+  function applyFiscalYearChange(year: number) {
     setFiscalYear(year);
     setPanelError(null);
+  }
+
+  function handleChangeDepartment(id: string) {
+    if (mode === 'edit' && isDirty()) {
+      setPendingSwitch({ kind: 'dept', value: id });
+      return;
+    }
+    applyDepartmentChange(id);
+  }
+
+  function handleChangeFiscalYear(year: number) {
+    if (mode === 'edit' && isDirty()) {
+      setPendingSwitch({ kind: 'year', value: year });
+      return;
+    }
+    applyFiscalYearChange(year);
+  }
+
+  function handleEnterEdit() {
+    setMode('edit');
+  }
+
+  function handleCancelPendingSwitch() {
+    setPendingSwitch(null);
+  }
+
+  async function handleConfirmDiscardAndSwitch() {
+    if (!pendingSwitch) return;
+    await performDiscard();
+    if (pendingSwitch.kind === 'dept') {
+      applyDepartmentChange(pendingSwitch.value as string);
+    } else {
+      applyFiscalYearChange(pendingSwitch.value as number);
+    }
+    setMode('view');
+    setPendingSwitch(null);
   }
 
   // No input dialog: the "+" adds the child immediately with default values
@@ -214,17 +268,25 @@ function App() {
       setSelectedNodeId(remap);
       setWeightEditorParentId(remap);
       setSaveStatus('idle');
+      setMode('view');
     } catch {
       setSaveStatus('error');
     }
   }
 
-  async function handleDiscard() {
+  // Shared discard logic (used both by the header's discard button and by
+  // DLG-04's "破棄して切替"); callers decide what happens to `mode` afterward.
+  async function performDiscard() {
     await discard();
     setSaveStatus('idle');
     setSelectedNodeId(null);
     setPanelError(null);
     setCanvasBanner(null);
+  }
+
+  async function handleDiscard() {
+    await performDiscard();
+    setMode('view');
   }
 
   const weightEditorParent = weightEditorParentId ? effectiveTree.nodesById[weightEditorParentId] : null;
@@ -237,6 +299,8 @@ function App() {
         onChangeDepartment={handleChangeDepartment}
         fiscalYear={fiscalYear}
         onChangeFiscalYear={handleChangeFiscalYear}
+        mode={mode}
+        onEnterEdit={handleEnterEdit}
         isDirty={isDirty()}
         saveStatus={saveStatus}
         onSave={handleSave}
@@ -284,6 +348,7 @@ function App() {
               maxLevel={maxLevel}
               searchTerm={searchTerm}
               assigneeFilter={assigneeFilter}
+              editable={mode === 'edit'}
             />
           )}
         </AppMain>
@@ -291,6 +356,7 @@ function App() {
           selected={selectedView}
           parentView={parentView}
           fiscalYear={fiscalYear}
+          readOnly={mode === 'view'}
           onUpdateNode={handleUpdateNode}
           onUpdateProgress={handleUpdateProgress}
           onUpdateArea={handleUpdateArea}
@@ -307,6 +373,10 @@ function App() {
           onSubmit={handleWeightSubmit}
           onClose={() => setWeightEditorParentId(null)}
         />
+      )}
+
+      {pendingSwitch && (
+        <UnsavedSwitchDialog onDiscardAndSwitch={handleConfirmDiscardAndSwitch} onCancel={handleCancelPendingSwitch} />
       )}
     </AppShell>
   );
